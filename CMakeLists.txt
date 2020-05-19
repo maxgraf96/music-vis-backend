@@ -54,7 +54,7 @@ juce_add_plugin(music-vis-backend
     PRODUCT_NAME "music-vis-backend")        # The name of the final executable, which can differ from the target name
 
 include_directories(
-        "/usr/local/include" "/usr/include" "/usr/include/eigen3"
+        "/usr/local/include" "/usr/local/include/eigen3"
 )
 
 find_library(
@@ -66,13 +66,13 @@ find_library(
 find_library(
         FFTW3
         NAMES libfftw3.a
-        HINTS "/usr/lib/x86_64-linux-gnu"
+        HINTS "/usr/local/lib"
 )
 
 find_library(
         FFTW3F
         NAMES libfftw3f.a
-        HINTS "/usr/lib/x86_64-linux-gnu"
+        HINTS "/usr/local/lib"
 )
 
 # `juce_generate_juce_header` will create a JuceHeader.h for a given target, which will be generated
