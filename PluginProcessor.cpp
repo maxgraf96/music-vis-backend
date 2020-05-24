@@ -1,10 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-using namespace std;
-using namespace essentia;
-using namespace essentia::standard;
-
 //==============================================================================
 AudioPluginAudioProcessor::AudioPluginAudioProcessor()
      : AudioProcessor (BusesProperties()
@@ -16,6 +12,7 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                      #endif
                        )
 {
+
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -90,29 +87,32 @@ void AudioPluginAudioProcessor::changeProgramName (int index, const juce::String
 //==============================================================================
 void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
-    juce::ignoreUnused (sampleRate, samplesPerBlock);
-
-    std::cout << "WEEE" << std::endl;
-
+    // Initialise essentia
     essentia::init();
+    // Create algo pool
     Pool pool;
 
-    AlgorithmFactory& factory = standard::AlgorithmFactory::instance();
-    Algorithm* spec  = factory.create("Spectrum");
-    Algorithm* mfcc  = factory.create("MFCC");
+    // Create algorithms
+    standard::AlgorithmFactory& factory = standard::AlgorithmFactory::instance();
+    windowing.reset(factory.create("Windowing", "type", "blackmanharris62"));
+    spectrum.reset(factory.create("Spectrum"));
+    mfcc.reset(factory.create("MFCC"));
+    specCentroid.reset(factory.create("SpectralCentroidTime", "sampleRate", sampleRate));
 
-    delete spec;
-    delete mfcc;
-    essentia::shutdown();
+    // Connect algorithms
+    windowing->input("frame").set(eAudioBuffer);
+    windowing->output("frame").set(windowedFrame);
+    spectrum->input("frame").set(windowedFrame);
+    spectrum->output("spectrum").set(spectrumData);
+
+    specCentroid->input("array").set(eAudioBuffer);
+    specCentroid->output("centroid").set(spectralCentroid);
 }
 
 void AudioPluginAudioProcessor::releaseResources()
 {
-    // When playback stops, you can use this as an opportunity to free up any
-    // spare memory, etc.
-
+    // Shutdown essentia
+    essentia::shutdown();
 }
 
 bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -166,7 +166,20 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         auto* channelData = buffer.getWritePointer (channel);
         juce::ignoreUnused (channelData);
         // ..do something to the data...
+
+
     }
+    // Clear essentia audiobuffer
+    eAudioBuffer.clear();
+
+    auto* reader = buffer.getReadPointer(0);
+    for (int i = 0; i < buffer.getNumSamples(); i++){
+        eAudioBuffer.push_back(reader[i]);
+    }
+
+    windowing->compute();
+    spectrum->compute();
+    specCentroid->compute();
 }
 
 //==============================================================================
@@ -194,6 +207,14 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
     juce::ignoreUnused (data, sizeInBytes);
+}
+
+vector <Real> &AudioPluginAudioProcessor::getSpectrumData() {
+    return spectrumData;
+}
+
+Real &AudioPluginAudioProcessor::getSpectralCentroid() {
+    return spectralCentroid;
 }
 
 //==============================================================================

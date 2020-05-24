@@ -90,7 +90,8 @@ find_library(
 
 target_sources(music-vis-backend PRIVATE
     PluginEditor.cpp
-    PluginProcessor.cpp)
+    PluginProcessor.cpp
+        Utility.cpp)
 
 # `target_compile_definitions` adds some preprocessor definitions to our target. In a Projucer
 # project, these might be passed in the 'Preprocessor Definitions' field. JUCE modules also make use
