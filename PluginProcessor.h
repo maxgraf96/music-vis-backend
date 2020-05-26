@@ -4,6 +4,7 @@
 #include <essentia/algorithmfactory.h>
 #include <essentia/pool.h>
 #include "Utility.h"
+#include <mapper/mapper_cpp.h>
 
 using namespace std;
 using namespace essentia;
@@ -64,6 +65,10 @@ private:
     unique_ptr<Algorithm> spectrum;
     unique_ptr<Algorithm> mfcc;
     unique_ptr<Algorithm> specCentroid;
+
+    // Libmapper stuff
+    unique_ptr<mapper::Device> dev;
+    unique_ptr<mapper::Signal> sensor1;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
     //==============================================================================

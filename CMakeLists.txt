@@ -127,4 +127,6 @@ target_link_libraries(music-vis-backend PRIVATE
     juce::juce_audio_utils
         essentia -L/usr/local/lib
         fftw3 -L/usr/lib/x86_64-linux-gnu
-        fftw3f -L/usr/lib/x86_64-linux-gnu)
+        fftw3f -L/usr/lib/x86_64-linux-gnu
+        mapper -L/usr/local/lib
+        )
