@@ -28,20 +28,6 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
 
     g.setColour (juce::Colours::white);
     g.setFont (15.0f);
-
-    // Print first 20 magnitudes
-    for(int i = 0; i < 20; i++){
-        auto current = spectrum[i];
-        g.drawSingleLineText(juce::String(current), 24, 24 + 10 * i);
-    }
-
-    // Draw spectral centroid
-    g.drawRoundedRectangle(getWidth() / 2,
-            mapFloat(spectralCentroid, 0.0f, 5000.0f, getHeight() - 48, 48),
-            24,
-            24,
-            12,
-            2.0);
 }
 
 void AudioPluginAudioProcessorEditor::resized()

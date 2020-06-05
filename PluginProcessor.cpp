@@ -10,11 +10,24 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ), valueTreeState(*this,
+                         nullptr, // No undo manager
+                         Identifier("music-vis-backend"),
+                         {
+                            std::make_unique<AudioParameterFloat>(
+                                    "testparam",
+                                    "I am a test parameter",
+                                    0.0f,
+                                    1.0f,
+                                    0.0f
+                            )
+                         })
 {
     // Setup libmapper
     dev = make_unique<mapper::Device>("test");
     sensor1 = make_unique<mapper::Signal>(dev->add_output_signal("sensor1", 1, 'f', nullptr, nullptr, nullptr));
+    sensor2 = make_unique<mapper::Signal>(dev->add_output_signal("sensor2", 128, 'f', 0, 0, 0));
+    pitchSensor = make_unique<mapper::Signal>(dev->add_output_signal("pitchSensor", 1, 'f', 0, 0, 0));
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -100,12 +113,18 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     spectrum.reset(factory.create("Spectrum"));
     mfcc.reset(factory.create("MFCC"));
     specCentroid.reset(factory.create("SpectralCentroidTime", "sampleRate", sampleRate));
+    pitchYin.reset(factory.create("PitchYin", "sampleRate", sampleRate, "frameSize", samplesPerBlock));
 
     // Connect algorithms
     windowing->input("frame").set(eAudioBuffer);
     windowing->output("frame").set(windowedFrame);
     spectrum->input("frame").set(windowedFrame);
     spectrum->output("spectrum").set(spectrumData);
+
+    // Pitch detection
+    pitchYin->input("signal").set(eAudioBuffer);
+    pitchYin->output("pitch").set(estimatedPitch);
+    pitchYin->output("pitchConfidence").set(pitchConfidence);
 
     specCentroid->input("array").set(eAudioBuffer);
     specCentroid->output("centroid").set(spectralCentroid);
@@ -168,12 +187,15 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     windowing->compute();
     spectrum->compute();
     specCentroid->compute();
+    pitchYin->compute();
 
     // Poll libmapper device
     dev->poll();
 
     // Send spectral centroid to libmapper
     sensor1->update(spectralCentroid);
+    sensor2->update(spectrumData);
+    pitchSensor->update(estimatedPitch);
 }
 
 //==============================================================================
@@ -190,17 +212,19 @@ juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
 //==============================================================================
 void AudioPluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
-    juce::ignoreUnused (destData);
+    // Store state when closing plugin
+    const auto state = valueTreeState.copyState();
+    std::unique_ptr<XmlElement> xml(state.createXml());
+    copyXmlToBinary(*xml, destData);
 }
 
 void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
-    juce::ignoreUnused (data, sizeInBytes);
+    // Restore saved state
+    std::unique_ptr<XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+    if (xmlState != nullptr)
+        if (xmlState->hasTagName(valueTreeState.state.getType()))
+            valueTreeState.replaceState(ValueTree::fromXml(*xmlState));
 }
 
 vector <Real> &AudioPluginAudioProcessor::getSpectrumData() {
@@ -209,6 +233,10 @@ vector <Real> &AudioPluginAudioProcessor::getSpectrumData() {
 
 Real &AudioPluginAudioProcessor::getSpectralCentroid() {
     return spectralCentroid;
+}
+
+void AudioPluginAudioProcessor::parameterChanged(const String &parameterID, float newValue) {
+
 }
 
 //==============================================================================
