@@ -2,16 +2,34 @@
 #include "PluginEditor.h"
 
 //==============================================================================
-AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAudioProcessor& p)
-    : AudioProcessorEditor (&p), processorRef (p), spectrum(p.getSpectrumData()), spectralCentroid(p.getSpectralCentroid())
+AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAudioProcessor& p, AudioProcessorValueTreeState& valueTreeState)
+    : AudioProcessorEditor (&p), processorRef (p), spectrum(p.getSpectrumData()),
+    spectralCentroid(p.getSpectralCentroid()), vts(valueTreeState)
 {
-    juce::ignoreUnused (processorRef);
-    // Make sure that before the constructor has finished, you've set the
-    // editor's size to whatever you need it to be.
-    setSize (1024, 600);
-
     // Start timer and click every 50ms
     startTimer(50);
+
+    // Initialise GUI elements
+    cbNumberOfBands = make_unique<ComboBox>("cbNumberOfBands");
+
+    // Add GUI elements
+    addAndMakeVisible(*cbNumberOfBands);
+
+    // Setup filter visualiser
+    tooltip.reset(new TooltipWindow(this, 100));
+    filterGraph.reset(new FilterGraph(p, valueTreeState, *tooltip));
+    filterGraph->setBounds(705, 480, 282, 128);
+    filterGraph->setTraceColour(Colour(0xff356931));
+    addAndMakeVisible(*filterGraph);
+
+    // Populate combo box
+    cbNumberOfBands->addItemList(StringArray("1", "2", "3", "4"), 1);
+
+    // Attach valueTreeState to GUI elements
+    attachmentNumberOfBands = make_unique<ComboBoxAttachment>(vts, "numberOfBands", *cbNumberOfBands);
+
+    // Set editor size last
+    setSize (1024, 600);
 }
 
 AudioPluginAudioProcessorEditor::~AudioPluginAudioProcessorEditor()
@@ -32,8 +50,7 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
 
 void AudioPluginAudioProcessorEditor::resized()
 {
-    // This is generally where you'll want to lay out the positions of any
-    // subcomponents in your editor..
+    cbNumberOfBands->setBounds(24, 24, 100, 24);
 }
 
 void AudioPluginAudioProcessorEditor::timerCallback() {

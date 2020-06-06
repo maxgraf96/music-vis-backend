@@ -51,12 +51,16 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    // Getter for set of filters used to split signal into bands
+
+
     vector<Real>& getSpectrumData();
     Real& getSpectralCentroid();
 
 private:
     // State management
     AudioProcessorValueTreeState valueTreeState;
+    std::atomic<float>* paramNumberOfBands = nullptr;
 
     // Will contain copy of the JUCE audio buffer
     vector<Real> eAudioBuffer;

@@ -89,9 +89,12 @@ find_library(
 # that will be built into the target. This is a standard CMake command.
 
 target_sources(music-vis-backend PRIVATE
-    PluginEditor.cpp
-    PluginProcessor.cpp
-        Utility.cpp)
+        PluginEditor.cpp
+        PluginProcessor.cpp
+        Utility.cpp
+        jucefiltergraph/FilterInfo.cpp
+        jucefiltergraph/FilterGraph.cpp
+        )
 
 # `target_compile_definitions` adds some preprocessor definitions to our target. In a Projucer
 # project, these might be passed in the 'Preprocessor Definitions' field. JUCE modules also make use
@@ -124,7 +127,8 @@ target_compile_definitions(music-vis-backend
 
 target_link_libraries(music-vis-backend PRIVATE
     # AudioPluginData           # If we'd created a binary data target, we'd link to it here
-    juce::juce_audio_utils
+        juce::juce_audio_utils
+        juce::juce_dsp
         essentia -L/usr/local/lib
         fftw3 -L/usr/lib/x86_64-linux-gnu
         fftw3f -L/usr/lib/x86_64-linux-gnu

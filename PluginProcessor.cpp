@@ -14,20 +14,96 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                          nullptr, // No undo manager
                          Identifier("music-vis-backend"),
                          {
-                            std::make_unique<AudioParameterFloat>(
-                                    "testparam",
-                                    "I am a test parameter",
-                                    0.0f,
-                                    1.0f,
-                                    0.0f
+                           std::make_unique<AudioParameterChoice>(
+                                    "numberOfBands",
+                                    "Number of Bands",
+                                    StringArray("1", "2", "3", "4"),
+                                    0
                             )
                          })
 {
+    // Initialise listeners for parameters
+    valueTreeState.addParameterListener("numberOfBands", this);
+
+    // Hook up parameters to values
+    paramNumberOfBands = valueTreeState.getRawParameterValue("numberOfBands");
+
     // Setup libmapper
     dev = make_unique<mapper::Device>("test");
     sensor1 = make_unique<mapper::Signal>(dev->add_output_signal("sensor1", 1, 'f', nullptr, nullptr, nullptr));
     sensor2 = make_unique<mapper::Signal>(dev->add_output_signal("sensor2", 128, 'f', 0, 0, 0));
     pitchSensor = make_unique<mapper::Signal>(dev->add_output_signal("pitchSensor", 1, 'f', 0, 0, 0));
+}
+
+void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
+                                              juce::MidiBuffer& midiMessages)
+{
+    juce::ignoreUnused (midiMessages);
+
+    juce::ScopedNoDenormals noDenormals;
+    auto totalNumInputChannels  = getTotalNumInputChannels();
+    auto totalNumOutputChannels = getTotalNumOutputChannels();
+
+    // In case we have more outputs than inputs, this code clears any output
+    // channels that didn't contain input data, (because these aren't
+    // guaranteed to be empty - they may contain garbage).
+    // This is here to avoid people getting screaming feedback
+    // when they first compile a plugin, but obviously you don't need to keep
+    // this code if your algorithm always overwrites all the output channels.
+    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
+        buffer.clear (i, 0, buffer.getNumSamples());
+
+    // Clear essentia audiobuffer
+    eAudioBuffer.clear();
+
+    auto* reader = buffer.getReadPointer(0);
+    for (int i = 0; i < buffer.getNumSamples(); i++){
+        eAudioBuffer.push_back(reader[i]);
+    }
+
+    windowing->compute();
+    spectrum->compute();
+    specCentroid->compute();
+    pitchYin->compute();
+
+    // Poll libmapper device
+    dev->poll();
+
+    // Send spectral centroid to libmapper
+    sensor1->update(spectralCentroid);
+    sensor2->update(spectrumData);
+    pitchSensor->update(estimatedPitch);
+}
+
+//==============================================================================
+void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+{
+    // Initialise essentia
+    essentia::init();
+    // Create algo pool
+    Pool pool;
+
+    // Create algorithms
+    standard::AlgorithmFactory& factory = standard::AlgorithmFactory::instance();
+    windowing.reset(factory.create("Windowing", "type", "blackmanharris62"));
+    spectrum.reset(factory.create("Spectrum"));
+    mfcc.reset(factory.create("MFCC"));
+    specCentroid.reset(factory.create("SpectralCentroidTime", "sampleRate", sampleRate));
+    pitchYin.reset(factory.create("PitchYin", "sampleRate", sampleRate, "frameSize", samplesPerBlock));
+
+    // Connect algorithms
+    windowing->input("frame").set(eAudioBuffer);
+    windowing->output("frame").set(windowedFrame);
+    spectrum->input("frame").set(windowedFrame);
+    spectrum->output("spectrum").set(spectrumData);
+
+    // Pitch detection
+    pitchYin->input("signal").set(eAudioBuffer);
+    pitchYin->output("pitch").set(estimatedPitch);
+    pitchYin->output("pitchConfidence").set(pitchConfidence);
+
+    specCentroid->input("array").set(eAudioBuffer);
+    specCentroid->output("centroid").set(spectralCentroid);
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -99,36 +175,7 @@ void AudioPluginAudioProcessor::changeProgramName (int index, const juce::String
     juce::ignoreUnused (index, newName);
 }
 
-//==============================================================================
-void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
-{
-    // Initialise essentia
-    essentia::init();
-    // Create algo pool
-    Pool pool;
 
-    // Create algorithms
-    standard::AlgorithmFactory& factory = standard::AlgorithmFactory::instance();
-    windowing.reset(factory.create("Windowing", "type", "blackmanharris62"));
-    spectrum.reset(factory.create("Spectrum"));
-    mfcc.reset(factory.create("MFCC"));
-    specCentroid.reset(factory.create("SpectralCentroidTime", "sampleRate", sampleRate));
-    pitchYin.reset(factory.create("PitchYin", "sampleRate", sampleRate, "frameSize", samplesPerBlock));
-
-    // Connect algorithms
-    windowing->input("frame").set(eAudioBuffer);
-    windowing->output("frame").set(windowedFrame);
-    spectrum->input("frame").set(windowedFrame);
-    spectrum->output("spectrum").set(spectrumData);
-
-    // Pitch detection
-    pitchYin->input("signal").set(eAudioBuffer);
-    pitchYin->output("pitch").set(estimatedPitch);
-    pitchYin->output("pitchConfidence").set(pitchConfidence);
-
-    specCentroid->input("array").set(eAudioBuffer);
-    specCentroid->output("centroid").set(spectralCentroid);
-}
 
 void AudioPluginAudioProcessor::releaseResources()
 {
@@ -158,46 +205,6 @@ bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
   #endif
 }
 
-void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
-                                              juce::MidiBuffer& midiMessages)
-{
-    juce::ignoreUnused (midiMessages);
-
-    juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels  = getTotalNumInputChannels();
-    auto totalNumOutputChannels = getTotalNumOutputChannels();
-
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
-
-    // Clear essentia audiobuffer
-    eAudioBuffer.clear();
-
-    auto* reader = buffer.getReadPointer(0);
-    for (int i = 0; i < buffer.getNumSamples(); i++){
-        eAudioBuffer.push_back(reader[i]);
-    }
-
-    windowing->compute();
-    spectrum->compute();
-    specCentroid->compute();
-    pitchYin->compute();
-
-    // Poll libmapper device
-    dev->poll();
-
-    // Send spectral centroid to libmapper
-    sensor1->update(spectralCentroid);
-    sensor2->update(spectrumData);
-    pitchSensor->update(estimatedPitch);
-}
-
 //==============================================================================
 bool AudioPluginAudioProcessor::hasEditor() const
 {
@@ -206,7 +213,7 @@ bool AudioPluginAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
 {
-    return new AudioPluginAudioProcessorEditor (*this);
+    return new AudioPluginAudioProcessorEditor (*this, valueTreeState);
 }
 
 //==============================================================================
