@@ -47,8 +47,13 @@ public:
 //============================================================================
 class FilterInfo
 {
-public:    
-    FilterInfo(AudioPluginAudioProcessor&, AudioProcessorValueTreeState&);
+public:
+    enum FilterType {
+        LOWPASS = 0,
+        HIGHPASS
+    };
+
+    FilterInfo(array<dsp::IIR::Filter<float>, 2>& filters, FilterType type, double sampleRate, AudioProcessorValueTreeState& valueTreeState);
     ~FilterInfo();
     
     void setSampleRate (double sampleRate);
@@ -64,16 +69,19 @@ public:
     void setCutoff(double cutoff);
 	// Set the filters' q
 //    void setQ(double Q);
+
 private:
+    // Filter type: 0 = lowpass, 1 = highpass
+    FilterType filterType = LOWPASS;
+
 	// The sample rate for the filter
     double fs;
 
-	// Reference to the main audio processor
-    AudioPluginAudioProcessor& processor;
+	// Reference to the value tree state from the processor to pick up state changes
     AudioProcessorValueTreeState& vts;
 
-	// Filter coefficients for left and right channel
-    array<dsp::IIR::Coefficients<float>::Ptr, 2> coeffs;
+	// References to filters
+    array<dsp::IIR::Filter<float>, 2>& filters;
 
 	// Filter gain, cutoff and q
     double gainValue;

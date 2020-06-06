@@ -18,12 +18,12 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     // Setup filter visualiser
     tooltip.reset(new TooltipWindow(this, 100));
     filterGraph.reset(new FilterGraph(p, valueTreeState, *tooltip));
-    filterGraph->setBounds(705, 480, 282, 128);
+    filterGraph->setBounds(24, 224, 282, 128);
     filterGraph->setTraceColour(Colour(0xff356931));
     addAndMakeVisible(*filterGraph);
 
     // Populate combo box
-    cbNumberOfBands->addItemList(StringArray("1", "2", "3", "4"), 1);
+    cbNumberOfBands->addItemList(StringArray("1", "2", "3"), 1);
 
     // Attach valueTreeState to GUI elements
     attachmentNumberOfBands = make_unique<ComboBoxAttachment>(vts, "numberOfBands", *cbNumberOfBands);

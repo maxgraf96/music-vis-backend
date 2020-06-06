@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_dsp/juce_dsp.h>
 #include <essentia/algorithmfactory.h>
 #include <essentia/pool.h>
 #include "Utility.h"
@@ -51,16 +52,29 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    // Getter for set of filters used to split signal into bands
-
-
     vector<Real>& getSpectrumData();
     Real& getSpectralCentroid();
+
+    // Getters for filters - used in FilterGraph
+    array<dsp::IIR::Filter<float>, 2>& getLowpassFilters();
+    array<dsp::IIR::Filter<float>, 2>& getHighpassFilters();
 
 private:
     // State management
     AudioProcessorValueTreeState valueTreeState;
-    std::atomic<float>* paramNumberOfBands = nullptr;
+    // Number of audio bands to which to split the main signal
+    // Allows for separate processing of high, mid and low-end
+    atomic<float>* paramNumberOfBands = nullptr;
+    // Cutoff frequency for the lowpass filter
+    atomic<float>* paramLowpassCutoff = nullptr;
+    // Cutoff frequency for the highpass filter
+    atomic<float>* paramHighpassCutoff = nullptr;
+    // NB: The cutoff frequencies for the mid-band are calculated from the high- and low band filters respectively
+
+    // Main filters: 2 for lowpass, 2 for highpass
+    array<dsp::IIR::Filter<float>, 2> lowpassFilters;
+    array<dsp::IIR::Filter<float>, 2> highpassFilters;
+    const double FILTER_Q = sqrt(2) / 2;
 
     // Will contain copy of the JUCE audio buffer
     vector<Real> eAudioBuffer;

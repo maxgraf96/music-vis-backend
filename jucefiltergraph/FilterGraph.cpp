@@ -13,9 +13,9 @@
 FilterGraph::FilterGraph(AudioPluginAudioProcessor& p, AudioProcessorValueTreeState& valueTreeState, TooltipWindow& tooltip)
     :tooltip(tooltip), vts(valueTreeState)
 {
-    // Construct filter vectors for each filter from processor
-//    filterVector.emplace_back(p.);
-//    filterVector[0].setSampleRate(p.getSampleRate());
+    // Construct filter vector from low- and highpass filters from processor
+    filterVector.emplace_back(FilterInfo(p.getLowpassFilters(), FilterInfo::LOWPASS, p.getSampleRate(), valueTreeState));
+    filterVector.emplace_back(FilterInfo(p.getHighpassFilters(), FilterInfo::HIGHPASS, p.getSampleRate(), valueTreeState));
 
     numHorizontalLines = 7;
 	// Hard limit frequency region for now
@@ -24,7 +24,7 @@ FilterGraph::FilterGraph(AudioPluginAudioProcessor& p, AudioProcessorValueTreeSt
     fs = p.getSampleRate();
     maxdB = 6;
     maxPhas = 1;
-    numFilters = 0; // TODO CHANGE THIS BACK
+    numFilters = 2;
     traceColour = Colour(0xaa00ff00);
     traceType = Magnitude;
 
@@ -52,79 +52,37 @@ void FilterGraph::paint (Graphics& g)
     const auto width = float(getWidth());
     const auto height = float(getHeight());
     
-    // paint the display background ============================================================================
+    // paint the display background
     g.setGradientFill (ColourGradient (Colour (0xff232338), width / 2, height / 2, Colour (0xff21222a), 2.5f, height / 2, true));
     g.fillRect (2.5f, 2.5f, width - 5, height - 5);
     
-    // paint the only trace at the moment ======================================================================
+    // paint the only trace at the moment
     tracePath.clear();
-    
-    if (traceType == Magnitude)
-    {
-	    const float scaleFactor = (((height / 2) - (height - 5) / (numHorizontalLines + 1) - 2.5f) / maxdB);
-    
-        float traceMagnitude = float(filterVector[0].getResponse(lowFreq).magnitudeValue);
-        
-        for (int i = 1; i < numFilters; i++)
+
+    for (const FilterInfo& filterInfo : filterVector){
+        if (traceType == Magnitude)
         {
-            traceMagnitude *= float(filterVector[i].getResponse(lowFreq).magnitudeValue);
-        }
-        traceMagnitude = 20 * log10 (traceMagnitude);
-    
-        tracePath.startNewSubPath (2.5f, (height / 2) - (traceMagnitude * scaleFactor));
-        
-        for (float xPos = 3.5; xPos < (width - 2.5); xPos += 1.0f)
-        {
-	        const float freq = xToFreq (xPos);
-            
-            traceMagnitude = float(filterVector[0].getResponse(freq).magnitudeValue);
-            
-            for (int i = 1; i < numFilters; i++)
-            {
-                traceMagnitude *= float(filterVector[i].getResponse(freq).magnitudeValue);
-            }
+            const float scaleFactor = (((height / 2) - (height - 5) / (numHorizontalLines + 1) - 2.5f) / maxdB);
+
+            float traceMagnitude = float(filterInfo.getResponse(lowFreq).magnitudeValue);
             traceMagnitude = 20 * log10 (traceMagnitude);
-        
-            tracePath.lineTo (xPos, (height / 2) - (traceMagnitude * scaleFactor));
+
+            tracePath.startNewSubPath (2.5f, (height / 2) - (traceMagnitude * scaleFactor));
+
+            for (float xPos = 3.5; xPos < (width - 2.5); xPos += 1.0f)
+            {
+                const float freq = xToFreq (xPos);
+
+                traceMagnitude = float(filterInfo.getResponse(freq).magnitudeValue);
+                // Convert to dB
+                traceMagnitude = 20 * log10 (traceMagnitude);
+                // Trace path
+                tracePath.lineTo (xPos, (height / 2) - (traceMagnitude * scaleFactor));
+            }
         }
     }
-    
-    if (traceType == Phase)
-    {
-        float scaleFactor = ((height / 2) - (height - 5) / (numHorizontalLines + 1) - 2.5f) / (float_Pi * maxPhas);
-    
-        float traceMagnitude = (float) (filterVector [0].getResponse (lowFreq).phaseValue);
-        for (int i = 1; i < numFilters; i++)
-        {
-            traceMagnitude += (float) (filterVector [i].getResponse (lowFreq).phaseValue);
-        }
-        
-        float prevPhase = traceMagnitude;
-        float unwrapSummand = 0;
-        
-        tracePath.startNewSubPath (2.5f, (height / 2) - (traceMagnitude * scaleFactor));
-        for (float xPos = 3.5; xPos < (width - 2.5); xPos += 1)
-        {
-            float freq = xToFreq (xPos);
-            
-            traceMagnitude = (float) (filterVector [0].getResponse (freq).phaseValue);
-            
-            for (int i = 1; i < numFilters; i++)
-            {
-                traceMagnitude += (float) (filterVector [i].getResponse (freq).phaseValue);
-            }
-        
-            if (fabs (traceMagnitude - prevPhase) > 5)
-            {
-                unwrapSummand += float_Pi * 2;
-            }
-            
-            prevPhase = traceMagnitude;
-            
-            tracePath.lineTo (xPos, (height / 2) - ((traceMagnitude + unwrapSummand) * scaleFactor));
-        }
-    }
-    
+
+    // DRAW
     g.setColour (traceColour);
     g.strokePath (tracePath, PathStrokeType (3.0f));
     

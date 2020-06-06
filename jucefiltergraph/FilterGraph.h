@@ -84,8 +84,6 @@ private:
     AudioProcessorValueTreeState& vts;
 
 	// Vector containing the displayed filters
-	// Currently only contains the main lowpass filter
-	// Future versions will allow for combinations of filters as well
     vector <FilterInfo> filterVector;
 
 	// Paths for the grid display and trace of filter response

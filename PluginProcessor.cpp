@@ -17,16 +17,34 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                            std::make_unique<AudioParameterChoice>(
                                     "numberOfBands",
                                     "Number of Bands",
-                                    StringArray("1", "2", "3", "4"),
+                                    StringArray("1", "2", "3"), // Support max 3 bands atm
                                     0
-                            )
+                            ),
+                            std::make_unique<AudioParameterFloat>(
+                                    "lowpassCutoff",
+                                    "Lowpass Filter Cutoff",
+                                    20.0f,
+                                    20000.0f,
+                                    3000.0f
+                                    ),
+                           std::make_unique<AudioParameterFloat>(
+                                   "highpassCutoff",
+                                   "Highpass Filter Cutoff",
+                                   20.0f,
+                                   20000.0f,
+                                   5000.0f
+                           )
                          })
 {
     // Initialise listeners for parameters
     valueTreeState.addParameterListener("numberOfBands", this);
+    valueTreeState.addParameterListener("lowpassCutoff", this);
+    valueTreeState.addParameterListener("highpassCutoff", this);
 
     // Hook up parameters to values
     paramNumberOfBands = valueTreeState.getRawParameterValue("numberOfBands");
+    paramLowpassCutoff = valueTreeState.getRawParameterValue("lowpassCutoff");
+    paramHighpassCutoff = valueTreeState.getRawParameterValue("highpassCutoff");
 
     // Setup libmapper
     dev = make_unique<mapper::Device>("test");
@@ -38,8 +56,6 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
 void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                               juce::MidiBuffer& midiMessages)
 {
-    juce::ignoreUnused (midiMessages);
-
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
@@ -104,6 +120,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
     specCentroid->input("array").set(eAudioBuffer);
     specCentroid->output("centroid").set(spectralCentroid);
+
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -175,8 +192,6 @@ void AudioPluginAudioProcessor::changeProgramName (int index, const juce::String
     juce::ignoreUnused (index, newName);
 }
 
-
-
 void AudioPluginAudioProcessor::releaseResources()
 {
     // Shutdown essentia
@@ -232,6 +247,13 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
     if (xmlState != nullptr)
         if (xmlState->hasTagName(valueTreeState.state.getType()))
             valueTreeState.replaceState(ValueTree::fromXml(*xmlState));
+
+    // Set filter cutoff frequencies
+    for (int i = 0; i < lowpassFilters.size(); i++) {
+        lowpassFilters[i].coefficients = dsp::IIR::Coefficients<float>::makeLowPass(getSampleRate(), *paramLowpassCutoff, FILTER_Q);
+        highpassFilters[i].coefficients = dsp::IIR::Coefficients<float>::makeHighPass(getSampleRate(), *paramHighpassCutoff, FILTER_Q);
+    }
+
 }
 
 vector <Real> &AudioPluginAudioProcessor::getSpectrumData() {
@@ -243,7 +265,26 @@ Real &AudioPluginAudioProcessor::getSpectralCentroid() {
 }
 
 void AudioPluginAudioProcessor::parameterChanged(const String &parameterID, float newValue) {
+    if(parameterID == "lowpassCutoff"){
+        // Set filter cutoff frequencies
+        for (auto & lowpassFilter : lowpassFilters) {
+            lowpassFilter.coefficients = dsp::IIR::Coefficients<float>::makeLowPass(getSampleRate(), newValue, FILTER_Q);
+        }
+    }
+    if(parameterID == "highpassCutoff"){
+        // Set filter cutoff frequencies
+        for (auto & highpassFilter : highpassFilters) {
+            highpassFilter.coefficients = dsp::IIR::Coefficients<float>::makeHighPass(getSampleRate(), newValue, FILTER_Q);
+        }
+    }
+}
 
+array<dsp::IIR::Filter<float>, 2> &AudioPluginAudioProcessor::getLowpassFilters() {
+    return lowpassFilters;
+}
+
+array<dsp::IIR::Filter<float>, 2> &AudioPluginAudioProcessor::getHighpassFilters() {
+    return highpassFilters;
 }
 
 //==============================================================================
