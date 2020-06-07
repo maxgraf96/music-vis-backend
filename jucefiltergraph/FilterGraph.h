@@ -11,6 +11,7 @@
 #include "FilterInfo.h"
 #include "../Utility.h"
 #include "../PluginProcessor.h"
+#include "../Constants.h"
 
 using namespace std;
 
@@ -74,7 +75,7 @@ private:
     void mouseUp(const MouseEvent& event) override;
 
 	// Update the filter values in state management and in the FilterInfo
-    void updateFilters(float cutoff, float q);
+    void updateFilter(int filter, float cutoff);
 
 	// Render a tooltip showing the current cutoff frequency and q value
 	// nn drag
@@ -82,6 +83,11 @@ private:
 
 	// Reference to state management tree
     AudioProcessorValueTreeState& vts;
+    Value lowpassCutoff;
+    Value highpassCutoff;
+    atomic<float>* numberOfBands;
+
+    int selectedFilterDragging = 0;
 
 	// Vector containing the displayed filters
     vector <FilterInfo> filterVector;

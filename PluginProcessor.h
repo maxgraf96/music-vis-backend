@@ -5,6 +5,7 @@
 #include <essentia/algorithmfactory.h>
 #include <essentia/pool.h>
 #include "Utility.h"
+#include "Constants.h"
 #include <mapper/mapper_cpp.h>
 
 using namespace juce;
@@ -66,7 +67,7 @@ private:
     // Allows for separate processing of high, mid and low-end
     atomic<float>* paramNumberOfBands = nullptr;
     // Cutoff frequency for the lowpass filter
-    atomic<float>* paramLowpassCutoff = nullptr;
+    Value paramLowpassCutoff;
     // Cutoff frequency for the highpass filter
     atomic<float>* paramHighpassCutoff = nullptr;
     // NB: The cutoff frequencies for the mid-band are calculated from the high- and low band filters respectively
@@ -74,7 +75,6 @@ private:
     // Main filters: 2 for lowpass, 2 for highpass
     array<dsp::IIR::Filter<float>, 2> lowpassFilters;
     array<dsp::IIR::Filter<float>, 2> highpassFilters;
-    const double FILTER_Q = sqrt(2) / 2;
 
     // Will contain copy of the JUCE audio buffer
     vector<Real> eAudioBuffer;

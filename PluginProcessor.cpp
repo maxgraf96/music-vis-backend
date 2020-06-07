@@ -43,7 +43,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
 
     // Hook up parameters to values
     paramNumberOfBands = valueTreeState.getRawParameterValue("numberOfBands");
-    paramLowpassCutoff = valueTreeState.getRawParameterValue("lowpassCutoff");
+    paramLowpassCutoff.referTo(valueTreeState.getParameterAsValue("lowpassCutoff"));
+    auto test = paramLowpassCutoff.getValue();
     paramHighpassCutoff = valueTreeState.getRawParameterValue("highpassCutoff");
 
     // Setup libmapper
@@ -249,11 +250,12 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
             valueTreeState.replaceState(ValueTree::fromXml(*xmlState));
 
     // Set filter cutoff frequencies
+    paramLowpassCutoff = paramLowpassCutoff.getValue();
+    auto test = paramLowpassCutoff.getValue();
     for (int i = 0; i < lowpassFilters.size(); i++) {
-        lowpassFilters[i].coefficients = dsp::IIR::Coefficients<float>::makeLowPass(getSampleRate(), *paramLowpassCutoff, FILTER_Q);
-        highpassFilters[i].coefficients = dsp::IIR::Coefficients<float>::makeHighPass(getSampleRate(), *paramHighpassCutoff, FILTER_Q);
+        lowpassFilters[i].coefficients = dsp::IIR::Coefficients<float>::makeLowPass(getSampleRate(), paramLowpassCutoff.getValue(), SQRT_2_OVER_2);
+        highpassFilters[i].coefficients = dsp::IIR::Coefficients<float>::makeHighPass(getSampleRate(), *paramHighpassCutoff, SQRT_2_OVER_2);
     }
-
 }
 
 vector <Real> &AudioPluginAudioProcessor::getSpectrumData() {
@@ -266,15 +268,16 @@ Real &AudioPluginAudioProcessor::getSpectralCentroid() {
 
 void AudioPluginAudioProcessor::parameterChanged(const String &parameterID, float newValue) {
     if(parameterID == "lowpassCutoff"){
+        paramLowpassCutoff = newValue;
         // Set filter cutoff frequencies
         for (auto & lowpassFilter : lowpassFilters) {
-            lowpassFilter.coefficients = dsp::IIR::Coefficients<float>::makeLowPass(getSampleRate(), newValue, FILTER_Q);
+            lowpassFilter.coefficients = dsp::IIR::Coefficients<float>::makeLowPass(getSampleRate(), newValue, SQRT_2_OVER_2);
         }
     }
     if(parameterID == "highpassCutoff"){
         // Set filter cutoff frequencies
         for (auto & highpassFilter : highpassFilters) {
-            highpassFilter.coefficients = dsp::IIR::Coefficients<float>::makeHighPass(getSampleRate(), newValue, FILTER_Q);
+            highpassFilter.coefficients = dsp::IIR::Coefficients<float>::makeHighPass(getSampleRate(), newValue, SQRT_2_OVER_2);
         }
     }
 }

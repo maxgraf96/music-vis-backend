@@ -29,8 +29,18 @@ FilterGraph::FilterGraph(AudioPluginAudioProcessor& p, AudioProcessorValueTreeSt
     traceType = Magnitude;
 
 	// Add parameter listeners
-    //vts.addParameterListener("mainFilterCutoff", this);
-    //vts.addParameterListener("mainFilterQ", this);
+    vts.addParameterListener("lowpassCutoff", this);
+    vts.addParameterListener("highpassCutoff", this);
+    vts.addParameterListener("numberOfBands", this);
+
+    // Update values
+    lowpassCutoff.referTo(vts.getParameterAsValue("lowpassCutoff"));
+    lowpassCutoff = vts.getParameter("lowpassCutoff")->getValue() * vts.getParameter("lowpassCutoff")->getNormalisableRange().end;
+
+    highpassCutoff.referTo(vts.getParameterAsValue("highpassCutoff"));
+    highpassCutoff = vts.getParameter("highpassCutoff")->getValue() * vts.getParameter("highpassCutoff")->getNormalisableRange().end;
+
+    numberOfBands = vts.getRawParameterValue("numberOfBands");
 
     repaint();
 
@@ -42,8 +52,8 @@ FilterGraph::FilterGraph(AudioPluginAudioProcessor& p, AudioProcessorValueTreeSt
 FilterGraph::~FilterGraph()
 {
 	// Remove state management listeners
-    vts.removeParameterListener("mainFilterCutoff", this);
-    vts.removeParameterListener("mainFilterQ", this);
+    vts.removeParameterListener("lowpassCutoff", this);
+    vts.removeParameterListener("highpassCutoff", this);
 }
 
 void FilterGraph::paint (Graphics& g)
@@ -56,10 +66,12 @@ void FilterGraph::paint (Graphics& g)
     g.setGradientFill (ColourGradient (Colour (0xff232338), width / 2, height / 2, Colour (0xff21222a), 2.5f, height / 2, true));
     g.fillRect (2.5f, 2.5f, width - 5, height - 5);
     
-    // paint the only trace at the moment
-    tracePath.clear();
 
-    for (const FilterInfo& filterInfo : filterVector){
+
+    for (FilterInfo& filterInfo : filterVector){
+        // Clear trace path
+        tracePath.clear();
+
         if (traceType == Magnitude)
         {
             const float scaleFactor = (((height / 2) - (height - 5) / (numHorizontalLines + 1) - 2.5f) / maxdB);
@@ -80,11 +92,15 @@ void FilterGraph::paint (Graphics& g)
                 tracePath.lineTo (xPos, (height / 2) - (traceMagnitude * scaleFactor));
             }
         }
-    }
 
-    // DRAW
-    g.setColour (traceColour);
-    g.strokePath (tracePath, PathStrokeType (3.0f));
+        // DRAW
+        if(filterInfo.getFilterType() == FilterInfo::FilterType::LOWPASS){
+            g.setColour (traceColour);
+        } else {
+            g.setColour(traceColour.contrasting());
+        }
+        g.strokePath (tracePath, PathStrokeType (3.0f));
+    }
     
     // paint the display grid lines ===============================================================================
     g.setColour (Colour (0xaaffffff));
@@ -156,20 +172,6 @@ void FilterGraph::setTraceColour (Colour newColour)
 void FilterGraph::mouseMove (const MouseEvent &event)
 {    
     repaint();
-
-    /*if (traceType == Phase)
-    {
-        float phase = (float) (filterVector [0].getResponse (freq).phaseValue);
-    
-        for (int i = 1; i < numFilters; i++)
-        {
-            phase += (float) (filterVector [i].getResponse (freq).phaseValue);
-        }
-        
-        phase /= float_Pi;
-    
-        tooltip.displayTip (mousePos, String (freq, 1) + "Hz, " + String (phase, 2) + String (CharPointer_UTF8 ("\xcf\x80")) + "rad");
-    }*/
 }
 
 void FilterGraph::mouseDrag(const MouseEvent& event)
@@ -182,17 +184,21 @@ void FilterGraph::mouseDrag(const MouseEvent& event)
     if (xPos < 0) xPos = 0;
     if (xPos > getWidth()) xPos = getWidth();
 
-    // Get y position for Q value
-    int yPos = lastMousePosRel.getY();
-    if (yPos < 0) yPos = 0;
-    if (yPos > getHeight()) yPos = getHeight();
-
     // Convert from coordinates to values
     const float freq = xToFreq(xPos);
-    const float q = mapFloat(yPos, 0.0f, static_cast<float>(getHeight()), 3.0f, 0.001f);
 
-    // Update filter coefficients
-    updateFilters(freq, q);
+    // Determine which filter's cutoff frequency should be moved
+    // 2 bands (value is off by one due to JUCE combobox handling)
+    if(*numberOfBands == 1.0f){
+        // Update both bands
+        updateFilter(0, freq);
+        updateFilter(1, freq);
+    }
+    // 3 bands
+    else if (*numberOfBands == 2.0f){
+        // Update filter coefficients
+        updateFilter(selectedFilterDragging, freq);
+    }
 
 	// Asynchronous repaint
     sendChangeMessage();
@@ -200,18 +206,25 @@ void FilterGraph::mouseDrag(const MouseEvent& event)
 
 void FilterGraph::mouseDown(const MouseEvent& event) {
     isDragging = true;
+
+    const float freq = xToFreq(getMouseXYRelative().getX());
+    if(abs(freq - static_cast<float>(lowpassCutoff.getValue())) < abs(freq - static_cast<float>(highpassCutoff.getValue()))){
+        selectedFilterDragging = 0;
+    } else {
+        selectedFilterDragging = 1;
+    }
 }
 
 void FilterGraph::mouseUp(const MouseEvent& event) {
     isDragging = false;
 }
 
-void FilterGraph::updateFilters(float cutoff, float q) {
-    // Set cutoff frequency
-    vts.getParameterAsValue("mainFilterCutoff").setValue(cutoff);
-    vts.getParameterAsValue("mainFilterQ").setValue(q);
-
-    filterVector[0].updateFilter(cutoff, q);
+void FilterGraph::updateFilter(int filter, float cutoff) {
+    if (filter == 0){
+        lowpassCutoff = cutoff;
+    } else {
+        highpassCutoff = cutoff;
+    }
 }
 
 void FilterGraph::renderTooltip(Point<int>& mousePosRel, Point<int>& mousePosAbs) {
@@ -238,16 +251,16 @@ void FilterGraph::renderTooltip(Point<int>& mousePosRel, Point<int>& mousePosAbs
 
 void FilterGraph::parameterChanged(const String& parameterID, float newValue)
 {
-    if (parameterID == "mainFilterCutoff") {
+    if (parameterID == "lowpassCutoff") {
     	// Update cutoff
-        filterVector[0].setCutoff(newValue);
+        //updateFilter(0, newValue);
     	// Repaint asynchronously
         sendChangeMessage();
     }
-    if (parameterID == "mainFilterQ") {
-    	// Update Q
-//        filterVector[0].setQ(newValue);
-    	// Repaint asynchronously
+    if (parameterID == "highpassCutoff") {
+        // Update cutoff
+        //updateFilter(1, newValue);
+        // Repaint asynchronously
         sendChangeMessage();
     }
 }

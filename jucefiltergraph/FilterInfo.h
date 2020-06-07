@@ -11,6 +11,7 @@
 
 #include <juce_dsp/juce_dsp.h>
 #include "../PluginProcessor.h"
+#include "../Constants.h"
 #include <complex>
 #include <vector>
 
@@ -58,17 +59,14 @@ public:
     
     void setSampleRate (double sampleRate);
     void setGain (double gain);
-    void updateFilter(float cutoff, float q);
 
 	// This method was adapted for modern JUCE versions
 	// It calls the getMagnitudeForFrequency(...) and getPhaseForFrequency(...)
 	// methods to generate the paths used to draw the filter visualisation in the FilterGraph
     FilterResponse getResponse (double inputFrequency) const;
 
-	// Set the filters' cutoff frequency
-    void setCutoff(double cutoff);
-	// Set the filters' q
-//    void setQ(double Q);
+    // Get the filter type (lowpass/highpass)
+    FilterType getFilterType();
 
 private:
     // Filter type: 0 = lowpass, 1 = highpass
@@ -85,6 +83,4 @@ private:
 
 	// Filter gain, cutoff and q
     double gainValue;
-    atomic<float>* cutoff;
-    atomic<float>* q;
 };

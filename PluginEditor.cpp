@@ -6,6 +6,10 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     : AudioProcessorEditor (&p), processorRef (p), spectrum(p.getSpectrumData()),
     spectralCentroid(p.getSpectralCentroid()), vts(valueTreeState)
 {
+    // Hook up to state management
+    vts.addParameterListener("numberOfBands", this);
+    numberOfBands = vts.getRawParameterValue("numberOfBands");
+
     // Start timer and click every 50ms
     startTimer(50);
 
@@ -21,6 +25,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     filterGraph->setBounds(24, 224, 282, 128);
     filterGraph->setTraceColour(Colour(0xff356931));
     addAndMakeVisible(*filterGraph);
+    filterGraph->setVisible(*numberOfBands != 0.0f);
 
     // Populate combo box
     cbNumberOfBands->addItemList(StringArray("1", "2", "3"), 1);
@@ -56,4 +61,11 @@ void AudioPluginAudioProcessorEditor::resized()
 void AudioPluginAudioProcessorEditor::timerCallback() {
     // Just repaint for now
     repaint();
+}
+
+void AudioPluginAudioProcessorEditor::parameterChanged(const String& parameterID, float newValue){
+    if(parameterID == "numberOfBands"){
+        filterGraph->setVisible(newValue != 0.0f);
+        repaint();
+    }
 }

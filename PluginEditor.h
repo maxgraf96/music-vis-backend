@@ -9,7 +9,8 @@ using namespace std;
 typedef AudioProcessorValueTreeState::ComboBoxAttachment ComboBoxAttachment;
 
 //==============================================================================
-class AudioPluginAudioProcessorEditor  : public juce::AudioProcessorEditor, private juce::Timer
+class AudioPluginAudioProcessorEditor  : public juce::AudioProcessorEditor, private juce::Timer,
+                                         private AudioProcessorValueTreeState::Listener
 {
 public:
     explicit AudioPluginAudioProcessorEditor (AudioPluginAudioProcessor&, AudioProcessorValueTreeState&);
@@ -23,6 +24,9 @@ private:
     // access the processor object that created it.
     AudioPluginAudioProcessor& processorRef;
     AudioProcessorValueTreeState& vts;
+
+    // Audio parameters
+    atomic<float>* numberOfBands;
 
     vector<Real>& spectrum;
     Real& spectralCentroid;
@@ -40,6 +44,8 @@ private:
     // Timer callback
     void timerCallback() override;
 
+    // APVTS parameter changed callback
+    void parameterChanged(const String& parameterID, float newValue) override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessorEditor)
 };
