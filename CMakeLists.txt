@@ -94,6 +94,7 @@ target_sources(music-vis-backend PRIVATE
         Utility.cpp
         jucefiltergraph/FilterInfo.cpp
         jucefiltergraph/FilterGraph.cpp
+        foleys_gui_magic/foleys_gui_magic.cpp
         )
 
 # `target_compile_definitions` adds some preprocessor definitions to our target. In a Projucer

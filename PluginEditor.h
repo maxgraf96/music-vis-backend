@@ -35,8 +35,6 @@ private:
     unique_ptr<ComboBox> cbNumberOfBands;
     // The filter visualisation component
     std::unique_ptr<FilterGraph> filterGraph;
-    // Necessary for enabling tooltips
-    std::unique_ptr<TooltipWindow> tooltip;
 
     // Attachments for state management
     unique_ptr<ComboBoxAttachment> attachmentNumberOfBands;

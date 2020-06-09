@@ -229,7 +229,14 @@ bool AudioPluginAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
 {
-    return new AudioPluginAudioProcessorEditor (*this, valueTreeState);
+//    return new AudioPluginAudioProcessorEditor (*this, valueTreeState);
+    // MAGIC GUI: we create our custom builder instance here, that will be available for all factories we add
+    auto builder = std::make_unique<foleys::MagicGUIBuilder>(&magicState);
+    builder->registerJUCEFactories();
+
+    registerFilterGraph(*builder, this);
+    magicState.setLastEditorSize(1024, 768);
+    return new foleys::MagicPluginEditor (magicState, std::move (builder));
 }
 
 //==============================================================================
@@ -288,6 +295,16 @@ array<dsp::IIR::Filter<float>, 2> &AudioPluginAudioProcessor::getLowpassFilters(
 
 array<dsp::IIR::Filter<float>, 2> &AudioPluginAudioProcessor::getHighpassFilters() {
     return highpassFilters;
+}
+
+void AudioPluginAudioProcessor::registerFilterGraph(foleys::MagicGUIBuilder& builder, AudioPluginAudioProcessor* processor) {
+    tooltip = make_unique<TooltipWindow>(this->getActiveEditor(), 100);
+
+
+    builder.registerFactory ("FilterGraph", [processor](const ValueTree&)
+    {
+        return std::make_unique<FilterGraph>(*processor, processor->valueTreeState, *processor->tooltip);
+    });
 }
 
 //==============================================================================

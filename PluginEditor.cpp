@@ -1,6 +1,8 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+#include <memory>
+
 //==============================================================================
 AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAudioProcessor& p, AudioProcessorValueTreeState& valueTreeState)
     : AudioProcessorEditor (&p), processorRef (p), spectrum(p.getSpectrumData()),
@@ -20,12 +22,12 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     addAndMakeVisible(*cbNumberOfBands);
 
     // Setup filter visualiser
-    tooltip.reset(new TooltipWindow(this, 100));
-    filterGraph.reset(new FilterGraph(p, valueTreeState, *tooltip));
-    filterGraph->setBounds(24, 224, 282, 128);
-    filterGraph->setTraceColour(Colour(0xff356931));
-    addAndMakeVisible(*filterGraph);
-    filterGraph->setVisible(*numberOfBands != 0.0f);
+//    tooltip = make_unique<TooltipWindow>(this, 100);
+//    filterGraph = make_unique<FilterGraph>(p, valueTreeState, *tooltip);
+//    filterGraph->setBounds(24, 224, 282, 128);
+//    filterGraph->setTraceColour(Colour(0xff356931));
+//    addAndMakeVisible(*filterGraph);
+//    filterGraph->setVisible(*numberOfBands != 0.0f);
 
     // Populate combo box
     cbNumberOfBands->addItemList(StringArray("1", "2", "3"), 1);

@@ -7,6 +7,7 @@
 #include "Utility.h"
 #include "Constants.h"
 #include <mapper/mapper_cpp.h>
+#include "foleys_gui_magic/foleys_gui_magic.h"
 
 using namespace juce;
 using namespace std;
@@ -70,11 +71,19 @@ private:
     Value paramLowpassCutoff;
     // Cutoff frequency for the highpass filter
     atomic<float>* paramHighpassCutoff = nullptr;
-    // NB: The cutoff frequencies for the mid-band are calculated from the high- and low band filters respectively
 
+    // NB: The cutoff frequencies for the mid-band are calculated from the high- and low band filters respectively
     // Main filters: 2 for lowpass, 2 for highpass
     array<dsp::IIR::Filter<float>, 2> lowpassFilters;
     array<dsp::IIR::Filter<float>, 2> highpassFilters;
+
+    // PluginGUIMagic stuff
+    foleys::MagicProcessorState magicState { *this, valueTreeState };
+    // filtergraph component registration
+    void registerFilterGraph(foleys::MagicGUIBuilder& builder, AudioPluginAudioProcessor* processor);
+
+    // Necessary for enabling tooltips
+    std::unique_ptr<TooltipWindow> tooltip;
 
     // Will contain copy of the JUCE audio buffer
     vector<Real> eAudioBuffer;
