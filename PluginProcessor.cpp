@@ -52,6 +52,9 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
     sensor1 = make_unique<mapper::Signal>(dev->add_output_signal("sensor1", 1, 'f', nullptr, nullptr, nullptr));
     sensor2 = make_unique<mapper::Signal>(dev->add_output_signal("sensor2", 128, 'f', 0, 0, 0));
     pitchSensor = make_unique<mapper::Signal>(dev->add_output_signal("pitchSensor", 1, 'f', 0, 0, 0));
+
+    // Start timer for GUI updates
+    startTimer(100);
 }
 
 void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
@@ -121,7 +124,6 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
     specCentroid->input("array").set(eAudioBuffer);
     specCentroid->output("centroid").set(spectralCentroid);
-
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -229,32 +231,26 @@ bool AudioPluginAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
 {
-//    return new AudioPluginAudioProcessorEditor (*this, valueTreeState);
     // MAGIC GUI: we create our custom builder instance here, that will be available for all factories we add
     auto builder = std::make_unique<foleys::MagicGUIBuilder>(&magicState);
     builder->registerJUCEFactories();
 
     registerFilterGraph(*builder, this);
     magicState.setLastEditorSize(1024, 768);
-    return new foleys::MagicPluginEditor (magicState, std::move (builder));
+    auto* editor = new foleys::MagicPluginEditor (magicState, MyBinaryData::getMagicXML(), MyBinaryData::getMagicXMLSize(), std::move (builder));
+
+    return editor;
 }
 
 //==============================================================================
 void AudioPluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    // Store state when closing plugin
-    const auto state = valueTreeState.copyState();
-    std::unique_ptr<XmlElement> xml(state.createXml());
-    copyXmlToBinary(*xml, destData);
+    magicState.getStateInformation (destData);
 }
 
 void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // Restore saved state
-    std::unique_ptr<XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
-    if (xmlState != nullptr)
-        if (xmlState->hasTagName(valueTreeState.state.getType()))
-            valueTreeState.replaceState(ValueTree::fromXml(*xmlState));
+    magicState.setStateInformation (data, sizeInBytes, getActiveEditor());
 
     // Set filter cutoff frequencies
     paramLowpassCutoff = paramLowpassCutoff.getValue();
@@ -300,11 +296,31 @@ array<dsp::IIR::Filter<float>, 2> &AudioPluginAudioProcessor::getHighpassFilters
 void AudioPluginAudioProcessor::registerFilterGraph(foleys::MagicGUIBuilder& builder, AudioPluginAudioProcessor* processor) {
     tooltip = make_unique<TooltipWindow>(this->getActiveEditor(), 100);
 
-
     builder.registerFactory ("FilterGraph", [processor](const ValueTree&)
     {
         return std::make_unique<FilterGraph>(*processor, processor->valueTreeState, *processor->tooltip);
     });
+}
+
+Component *AudioPluginAudioProcessor::getChildComponentWithID(Component *parent, String id) {
+    for (int i = 0; i < parent->getNumChildComponents(); i++)
+    {
+        auto* childComp = parent->getChildComponent(i);
+        DBG(childComp->getComponentID());
+
+        if (childComp->getComponentID() == id)
+            return childComp;
+
+        if (auto c = getChildComponentWithID (childComp, id))
+            return c;
+    }
+
+    return nullptr;
+}
+
+void AudioPluginAudioProcessor::timerCallback() {
+    magicState.getPropertyAsValue(SPECTRAL_CENTROID_ID.toString()).setValue(spectralCentroid);
+    magicState.getPropertyAsValue(PITCH_YIN_ID.toString()).setValue(estimatedPitch);
 }
 
 //==============================================================================

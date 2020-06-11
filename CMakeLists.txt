@@ -95,6 +95,7 @@ target_sources(music-vis-backend PRIVATE
         jucefiltergraph/FilterInfo.cpp
         jucefiltergraph/FilterGraph.cpp
         foleys_gui_magic/foleys_gui_magic.cpp
+        foleys_gui_magic/MyBinaryData.h
         )
 
 # `target_compile_definitions` adds some preprocessor definitions to our target. In a Projucer
@@ -125,6 +126,17 @@ target_compile_definitions(music-vis-backend
 # dependencies are resolved automatically, so `juce_core`, `juce_events` and so on will also be
 # linked automatically. If we'd generated a binary data target above, we would need to link to it
 # here too. This is a standard CMake command.
+
+# Copy the magicXML file to the executable directories
+# Debug
+configure_file(foleys_gui_magic/music-vis-backend.xml music-vis-backend_artefacts/Debug/Standalone/music-vis-backend.app/Contents/MacOS/music-vis-backend.xml COPYONLY)
+configure_file(foleys_gui_magic/music-vis-backend.xml music-vis-backend_artefacts/Debug/AU/music-vis-backend.component/Contents/MacOS/music-vis-backend.xml COPYONLY)
+configure_file(foleys_gui_magic/music-vis-backend.xml music-vis-backend_artefacts/Debug/VST3/music-vis-backend.vst3/Contents/MacOS/music-vis-backend.xml COPYONLY)
+# Release
+configure_file(foleys_gui_magic/music-vis-backend.xml music-vis-backend_artefacts/Release/Standalone/music-vis-backend.app/Contents/MacOS/music-vis-backend.xml COPYONLY)
+configure_file(foleys_gui_magic/music-vis-backend.xml music-vis-backend_artefacts/Release/AU/music-vis-backend.component/Contents/MacOS/music-vis-backend.xml COPYONLY)
+configure_file(foleys_gui_magic/music-vis-backend.xml music-vis-backend_artefacts/Release/VST3/music-vis-backend.vst3/Contents/MacOS/music-vis-backend.xml COPYONLY)
+
 
 target_link_libraries(music-vis-backend PRIVATE
     # AudioPluginData           # If we'd created a binary data target, we'd link to it here

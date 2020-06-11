@@ -8,6 +8,7 @@
 #include "Constants.h"
 #include <mapper/mapper_cpp.h>
 #include "foleys_gui_magic/foleys_gui_magic.h"
+#include "foleys_gui_magic/MyBinaryData.h"
 
 using namespace juce;
 using namespace std;
@@ -16,7 +17,7 @@ using namespace essentia::standard;
 
 //==============================================================================
 class AudioPluginAudioProcessor  : public juce::AudioProcessor,
-        private AudioProcessorValueTreeState::Listener
+        private AudioProcessorValueTreeState::Listener, Timer
 {
 public:
     //==============================================================================
@@ -82,6 +83,10 @@ private:
     // filtergraph component registration
     void registerFilterGraph(foleys::MagicGUIBuilder& builder, AudioPluginAudioProcessor* processor);
 
+    Label* spectralCentroidLabel;
+
+    static Component* getChildComponentWithID(Component* parent, String id);
+
     // Necessary for enabling tooltips
     std::unique_ptr<TooltipWindow> tooltip;
 
@@ -111,6 +116,12 @@ private:
     // manipulation from the host (such as automations)
     void parameterChanged(const String& parameterID, float newValue) override;
 
+    void timerCallback();
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
     //==============================================================================
 };
+
+// Identifiers for GUI interaction
+static Identifier SPECTRAL_CENTROID_ID = "spectralCentroidValue";
+static Identifier PITCH_YIN_ID = "pitchYINValue";

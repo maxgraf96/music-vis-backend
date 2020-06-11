@@ -6,4 +6,3 @@ cmake-build-debug
 cmake-build-debug/*
 libmapper-master
 libmapper-master/*
-foleys_gui_magic
