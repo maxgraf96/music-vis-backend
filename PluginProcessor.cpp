@@ -37,15 +37,14 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                          })
 {
     // Initialise listeners for parameters
-    valueTreeState.addParameterListener("numberOfBands", this);
-    valueTreeState.addParameterListener("lowpassCutoff", this);
-    valueTreeState.addParameterListener("highpassCutoff", this);
+    magicState.getValueTreeState().addParameterListener("numberOfBands", this);
+    magicState.getValueTreeState().addParameterListener("lowpassCutoff", this);
+    magicState.getValueTreeState().addParameterListener("highpassCutoff", this);
 
     // Hook up parameters to values
-    paramNumberOfBands = valueTreeState.getRawParameterValue("numberOfBands");
-    paramLowpassCutoff.referTo(valueTreeState.getParameterAsValue("lowpassCutoff"));
-    auto test = paramLowpassCutoff.getValue();
-    paramHighpassCutoff = valueTreeState.getRawParameterValue("highpassCutoff");
+    paramNumberOfBands = magicState.getValueTreeState().getRawParameterValue("numberOfBands");
+    paramLowpassCutoff.referTo(magicState.getValueTreeState().getParameterAsValue("lowpassCutoff"));
+    paramHighpassCutoff = magicState.getValueTreeState().getRawParameterValue("highpassCutoff");
 
     // Setup libmapper
     dev = make_unique<mapper::Device>("test");
@@ -236,10 +235,10 @@ juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
     builder->registerJUCEFactories();
 
     registerFilterGraph(*builder, this);
-    magicState.setLastEditorSize(1024, 768);
-    auto* editor = new foleys::MagicPluginEditor (magicState, MyBinaryData::getMagicXML(), MyBinaryData::getMagicXMLSize(), std::move (builder));
+    magicState.setLastEditorSize(1200, 1024);
 
-    return editor;
+    return new foleys::MagicPluginEditor (magicState, MyBinaryData::getMagicXML(), MyBinaryData::getMagicXMLSize(), std::move (builder));
+//    return new foleys::MagicPluginEditor (magicState, std::move (builder));
 }
 
 //==============================================================================
@@ -259,6 +258,9 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
         lowpassFilters[i].coefficients = dsp::IIR::Coefficients<float>::makeLowPass(getSampleRate(), paramLowpassCutoff.getValue(), SQRT_2_OVER_2);
         highpassFilters[i].coefficients = dsp::IIR::Coefficients<float>::makeHighPass(getSampleRate(), *paramHighpassCutoff, SQRT_2_OVER_2);
     }
+
+    // Show / hide mid band
+    magicState.getPropertyAsValue(MID_BAND_VISIBLE_ID.toString()).setValue(*paramNumberOfBands == 2.0f);
 }
 
 vector <Real> &AudioPluginAudioProcessor::getSpectrumData() {
@@ -283,6 +285,10 @@ void AudioPluginAudioProcessor::parameterChanged(const String &parameterID, floa
             highpassFilter.coefficients = dsp::IIR::Coefficients<float>::makeHighPass(getSampleRate(), newValue, SQRT_2_OVER_2);
         }
     }
+    if(parameterID == "numberOfBands"){
+        magicState.getPropertyAsValue(MID_BAND_VISIBLE_ID.toString()).setValue(newValue == 2.0f);
+        magicState.getPropertyAsValue(MULTIBAND_ENABLED.toString()).setValue(newValue > 0.0f);
+    }
 }
 
 array<dsp::IIR::Filter<float>, 2> &AudioPluginAudioProcessor::getLowpassFilters() {
@@ -298,7 +304,7 @@ void AudioPluginAudioProcessor::registerFilterGraph(foleys::MagicGUIBuilder& bui
 
     builder.registerFactory ("FilterGraph", [processor](const ValueTree&)
     {
-        return std::make_unique<FilterGraph>(*processor, processor->valueTreeState, *processor->tooltip);
+        return std::make_unique<FilterGraph>(*processor, processor->magicState.getValueTreeState(), *processor->tooltip);
     });
 }
 
@@ -319,8 +325,8 @@ Component *AudioPluginAudioProcessor::getChildComponentWithID(Component *parent,
 }
 
 void AudioPluginAudioProcessor::timerCallback() {
-    magicState.getPropertyAsValue(SPECTRAL_CENTROID_ID.toString()).setValue(spectralCentroid);
-    magicState.getPropertyAsValue(PITCH_YIN_ID.toString()).setValue(estimatedPitch);
+    magicState.getPropertyAsValue(SPECTRAL_CENTROID_ID.toString()).setValue(roundToInt(spectralCentroid));
+    magicState.getPropertyAsValue(PITCH_YIN_ID.toString()).setValue(roundToInt(estimatedPitch));
 }
 
 //==============================================================================

@@ -76,6 +76,8 @@ public:
 
     void resized() override;
 
+    MagicGUIBuilder& getBuilder();
+
 private:
     void initialise (const char* data = nullptr, const int dataSize = 0);
 

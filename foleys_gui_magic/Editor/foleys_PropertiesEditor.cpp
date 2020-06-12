@@ -223,6 +223,8 @@ void PropertiesEditor::addDecoratorProperties()
     array.add (new StyleChoicePropertyComponent (builder, IDs::imagePlacement, styleItem, { IDs::imageCentred, IDs::imageFill, IDs::imageStretch }));
     array.add (new StyleTextPropertyComponent (builder, IDs::backgroundAlpha, styleItem));
     array.add (new StyleTextPropertyComponent (builder, IDs::backgroundGradient, styleItem));
+    // Custom prop for enabled hehe
+    array.add(new StyleChoicePropertyComponent(builder, IDs::enabled, styleItem, SettableProperty::Property));
 
     properties.addSection ("Decorator", array, false);
 }

@@ -127,6 +127,7 @@ private:
 
     juce::ValueTree             configNode;
     juce::Value                 visibility { true };
+    juce::Value                 enabled {true};
 
     std::unique_ptr<juce::Component> component;
 

@@ -157,4 +157,8 @@ void MagicPluginEditor::resized()
     processorState.setLastEditorSize (getWidth(), getHeight());
 }
 
+MagicGUIBuilder& MagicPluginEditor::getBuilder(){
+    return *builder;
+}
+
 } // namespace foleys

@@ -125,3 +125,6 @@ private:
 // Identifiers for GUI interaction
 static Identifier SPECTRAL_CENTROID_ID = "spectralCentroidValue";
 static Identifier PITCH_YIN_ID = "pitchYINValue";
+static Identifier MID_BAND_VISIBLE_ID = "isMidBandVisible";
+static Identifier MID_MAX_WIDTH = "midMaxWidth";
+static Identifier MULTIBAND_ENABLED = "multiBandEnabled";

@@ -263,10 +263,6 @@ void FilterGraph::parameterChanged(const String& parameterID, float newValue)
         // Repaint asynchronously
         sendChangeMessage();
     }
-    if(parameterID == "numberOfBands"){
-        setVisible(newValue != 0.0f);
-        sendChangeMessage();
-    }
 }
 
 void FilterGraph::changeListenerCallback(ChangeBroadcaster* source)

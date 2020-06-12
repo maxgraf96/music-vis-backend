@@ -38,6 +38,7 @@ Decorator::Decorator (MagicGUIBuilder& builder, juce::ValueTree node, std::uniqu
     setOpaque (false);
 
     visibility.addListener (this);
+    enabled.addListener (this);
 
     setInterceptsMouseClicks (false, true);
 
@@ -63,6 +64,10 @@ void Decorator::configureDecorator (Stylesheet& stylesheet, const juce::ValueTre
     auto visibilityNode = magicBuilder.getStyleProperty (IDs::visibility, node);
     if (! visibilityNode.isVoid() && processorState)
         visibility.referTo (processorState->getPropertyAsValue (visibilityNode.toString()));
+
+    auto enabledNode = magicBuilder.getStyleProperty (IDs::enabled, node);
+    if (! enabledNode.isVoid() && processorState)
+        enabled.referTo (processorState->getPropertyAsValue (enabledNode.toString()));
 
     auto bg = magicBuilder.getStyleProperty (IDs::backgroundColour, node);
     if (! bg.isVoid())
@@ -303,6 +308,10 @@ void Decorator::valueChanged (juce::Value& source)
 {
     if (source == visibility)
         setVisible (visibility.getValue());
+
+    if(source == enabled){
+        setEnabled(source.getValue());
+    }
 }
 
 #if FOLEYS_SHOW_GUI_EDITOR_PALLETTE
@@ -350,6 +359,5 @@ void Decorator::itemDropped (const juce::DragAndDropTarget::SourceDetails &dragS
         magicBuilder.draggedItemOnto (node, configNode);
 }
 #endif
-
 
 }
