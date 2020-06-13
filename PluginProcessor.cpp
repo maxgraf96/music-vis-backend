@@ -14,37 +14,58 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                          nullptr, // No undo manager
                          Identifier("music-vis-backend"),
                          {
-                           std::make_unique<AudioParameterChoice>(
+                           make_unique<AudioParameterChoice>(
                                     "numberOfBands",
                                     "Number of Bands",
                                     StringArray("1", "2", "3"), // Support max 3 bands atm
                                     0
                             ),
-                            std::make_unique<AudioParameterFloat>(
+                            make_unique<AudioParameterFloat>(
                                     "lowpassCutoff",
                                     "Lowpass Filter Cutoff",
                                     20.0f,
                                     20000.0f,
                                     3000.0f
                                     ),
-                           std::make_unique<AudioParameterFloat>(
+                           make_unique<AudioParameterFloat>(
                                    "highpassCutoff",
                                    "Highpass Filter Cutoff",
                                    20.0f,
                                    20000.0f,
                                    5000.0f
-                           )
+                           ),
+                           make_unique<AudioParameterBool>(
+                                   "lowSolo",
+                                   "Low Band Solo",
+                                   false
+                                   ),
+                           make_unique<AudioParameterBool>(
+                                   "midSolo",
+                                   "Mid Band Solo",
+                                   false
+                           ),
+                           make_unique<AudioParameterBool>(
+                                 "highSolo",
+                                 "High Band Solo",
+                                 false
+                         )
                          })
 {
     // Initialise listeners for parameters
     magicState.getValueTreeState().addParameterListener("numberOfBands", this);
     magicState.getValueTreeState().addParameterListener("lowpassCutoff", this);
     magicState.getValueTreeState().addParameterListener("highpassCutoff", this);
+    magicState.getValueTreeState().addParameterListener("lowSolo", this);
+    magicState.getValueTreeState().addParameterListener("midSolo", this);
+    magicState.getValueTreeState().addParameterListener("highSolo", this);
 
     // Hook up parameters to values
     paramNumberOfBands = magicState.getValueTreeState().getRawParameterValue("numberOfBands");
     paramLowpassCutoff.referTo(magicState.getValueTreeState().getParameterAsValue("lowpassCutoff"));
-    paramHighpassCutoff = magicState.getValueTreeState().getRawParameterValue("highpassCutoff");
+    paramHighpassCutoff.referTo(magicState.getValueTreeState().getParameterAsValue("highpassCutoff"));
+    paramLowSolo = magicState.getValueTreeState().getRawParameterValue("lowSolo");
+    paramMidSolo = magicState.getValueTreeState().getRawParameterValue("midSolo");
+    paramHighSolo = magicState.getValueTreeState().getRawParameterValue("highSolo");
 
     // Setup libmapper
     dev = make_unique<mapper::Device>("test");
@@ -92,6 +113,63 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     sensor1->update(spectralCentroid);
     sensor2->update(spectrumData);
     pitchSensor->update(estimatedPitch);
+
+    // Multiband processing (if enabled)
+    if(*paramNumberOfBands > 0.0f){
+        lowBuffer->clear();
+        midBuffer->clear();
+        highBuffer->clear();
+
+        auto numSamples = buffer.getNumSamples();
+
+        // Loop over channels and perform filtering
+        for (int channel = 0; channel < totalNumOutputChannels; ++channel)
+        {
+            // Copy samples to buffers
+            lowBuffer->copyFrom(channel, 0, buffer, channel, 0, numSamples);
+            midBuffer->copyFrom(channel, 0, buffer, channel, 0, numSamples);
+            highBuffer->copyFrom(channel, 0, buffer, channel, 0, numSamples);
+
+            // Perform filtering
+            auto* lowWriter = lowBuffer->getWritePointer(channel);
+            auto* highWriter = highBuffer->getWritePointer(channel);
+            for (int sample = 0; sample < numSamples; sample++){
+                lowWriter[sample] = lowpassFilters[channel].processSample(lowWriter[sample]);
+                highWriter[sample] = highpassFilters[channel].processSample(highWriter[sample]);
+            }
+
+            // Calculate mid band by subtracting low and high band from input signal
+            midBuffer->addFrom(channel, 0, lowBuffer->getReadPointer(channel), numSamples, -1.0f);
+            midBuffer->addFrom(channel, 0, highBuffer->getReadPointer(channel), numSamples, -1.0f);
+        }
+
+        // Clear main buffer
+        buffer.clear();
+
+        // If no channel is soloed, play all streams back
+        if (noSolo()) {
+            for (int channel = 0; channel < totalNumOutputChannels; channel++) {
+                buffer.addFrom(channel, 0, *lowBuffer, channel, 0, numSamples);
+                buffer.addFrom(channel, 0, *midBuffer, channel, 0, numSamples);
+                buffer.addFrom(channel, 0, *highBuffer, channel, 0, numSamples);
+            }
+        }
+        // Otherwise play only from soloed bands
+        else {
+            for (int channel = 0; channel < totalNumOutputChannels; channel++) {
+                if(*paramLowSolo > 0.0f){
+                    buffer.addFrom(channel, 0, *lowBuffer, channel, 0, numSamples);
+                }
+                if(*paramMidSolo > 0.0f){
+                    buffer.addFrom(channel, 0, *midBuffer, channel, 0, numSamples);
+                }
+                if(*paramHighSolo > 0.0f){
+                    buffer.addFrom(channel, 0, *highBuffer, channel, 0, numSamples);
+                }
+            }
+        }
+
+    }
 }
 
 //==============================================================================
@@ -123,6 +201,15 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
     specCentroid->input("array").set(eAudioBuffer);
     specCentroid->output("centroid").set(spectralCentroid);
+
+    // Setup buffers
+    lowBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
+    midBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
+    highBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
+}
+
+bool AudioPluginAudioProcessor::noSolo() {
+    return *paramLowSolo == 0.0f && *paramMidSolo == 0.0f && *paramHighSolo == 0.0f;
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -238,7 +325,6 @@ juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
     magicState.setLastEditorSize(1200, 1024);
 
     return new foleys::MagicPluginEditor (magicState, MyBinaryData::getMagicXML(), MyBinaryData::getMagicXMLSize(), std::move (builder));
-//    return new foleys::MagicPluginEditor (magicState, std::move (builder));
 }
 
 //==============================================================================
@@ -256,7 +342,7 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
     auto test = paramLowpassCutoff.getValue();
     for (int i = 0; i < lowpassFilters.size(); i++) {
         lowpassFilters[i].coefficients = dsp::IIR::Coefficients<float>::makeLowPass(getSampleRate(), paramLowpassCutoff.getValue(), SQRT_2_OVER_2);
-        highpassFilters[i].coefficients = dsp::IIR::Coefficients<float>::makeHighPass(getSampleRate(), *paramHighpassCutoff, SQRT_2_OVER_2);
+        highpassFilters[i].coefficients = dsp::IIR::Coefficients<float>::makeHighPass(getSampleRate(), paramHighpassCutoff.getValue(), SQRT_2_OVER_2);
     }
 
     // Show / hide mid band
@@ -278,11 +364,28 @@ void AudioPluginAudioProcessor::parameterChanged(const String &parameterID, floa
         for (auto & lowpassFilter : lowpassFilters) {
             lowpassFilter.coefficients = dsp::IIR::Coefficients<float>::makeLowPass(getSampleRate(), newValue, SQRT_2_OVER_2);
         }
+
+        // Also update highpassCutoff if 2 bands are selected
+        if(*paramNumberOfBands == 1.0f){
+            magicState.getValueTreeState().getParameterAsValue("highpassCutoff").setValue(newValue);
+            for (auto & filter : highpassFilters) {
+                filter.coefficients = dsp::IIR::Coefficients<float>::makeHighPass(getSampleRate(), newValue, SQRT_2_OVER_2);
+            }
+        }
     }
     if(parameterID == "highpassCutoff"){
         // Set filter cutoff frequencies
         for (auto & highpassFilter : highpassFilters) {
             highpassFilter.coefficients = dsp::IIR::Coefficients<float>::makeHighPass(getSampleRate(), newValue, SQRT_2_OVER_2);
+        }
+
+        // Also update lowpassCutoff if 2 bands are selected
+        if(*paramNumberOfBands == 1.0f){
+//            paramLowpassCutoff = newValue;
+            magicState.getValueTreeState().getParameterAsValue("lowpassCutoff").setValue(newValue);
+            for (auto & filter : lowpassFilters) {
+                filter.coefficients = dsp::IIR::Coefficients<float>::makeLowPass(getSampleRate(), newValue, SQRT_2_OVER_2);
+            }
         }
     }
     if(parameterID == "numberOfBands"){

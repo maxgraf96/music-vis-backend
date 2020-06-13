@@ -71,12 +71,23 @@ private:
     // Cutoff frequency for the lowpass filter
     Value paramLowpassCutoff;
     // Cutoff frequency for the highpass filter
-    atomic<float>* paramHighpassCutoff = nullptr;
+    Value paramHighpassCutoff;
+    atomic<float>* paramLowSolo = nullptr;
+    atomic<float>* paramMidSolo = nullptr;
+    atomic<float>* paramHighSolo = nullptr;
 
     // NB: The cutoff frequencies for the mid-band are calculated from the high- and low band filters respectively
     // Main filters: 2 for lowpass, 2 for highpass
     array<dsp::IIR::Filter<float>, 2> lowpassFilters;
     array<dsp::IIR::Filter<float>, 2> highpassFilters;
+
+    // Buffers for low, mid and high bands
+    unique_ptr<AudioBuffer<float>> lowBuffer;
+    unique_ptr<AudioBuffer<float>> midBuffer;
+    unique_ptr<AudioBuffer<float>> highBuffer;
+
+    // Helper function to determine whether any band is currently solo'ed
+    bool noSolo();
 
     // PluginGUIMagic stuff
     foleys::MagicProcessorState magicState { *this, valueTreeState };
