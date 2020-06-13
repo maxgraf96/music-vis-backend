@@ -339,7 +339,9 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
 
     // Set filter cutoff frequencies
     paramLowpassCutoff = paramLowpassCutoff.getValue();
+    paramHighpassCutoff = paramHighpassCutoff.getValue();
     auto test = paramLowpassCutoff.getValue();
+    auto testhi = paramHighpassCutoff.getValue();
     for (int i = 0; i < lowpassFilters.size(); i++) {
         lowpassFilters[i].coefficients = dsp::IIR::Coefficients<float>::makeLowPass(getSampleRate(), paramLowpassCutoff.getValue(), SQRT_2_OVER_2);
         highpassFilters[i].coefficients = dsp::IIR::Coefficients<float>::makeHighPass(getSampleRate(), paramHighpassCutoff.getValue(), SQRT_2_OVER_2);
@@ -374,6 +376,7 @@ void AudioPluginAudioProcessor::parameterChanged(const String &parameterID, floa
         }
     }
     if(parameterID == "highpassCutoff"){
+        paramHighpassCutoff = newValue;
         // Set filter cutoff frequencies
         for (auto & highpassFilter : highpassFilters) {
             highpassFilter.coefficients = dsp::IIR::Coefficients<float>::makeHighPass(getSampleRate(), newValue, SQRT_2_OVER_2);
@@ -381,7 +384,6 @@ void AudioPluginAudioProcessor::parameterChanged(const String &parameterID, floa
 
         // Also update lowpassCutoff if 2 bands are selected
         if(*paramNumberOfBands == 1.0f){
-//            paramLowpassCutoff = newValue;
             magicState.getValueTreeState().getParameterAsValue("lowpassCutoff").setValue(newValue);
             for (auto & filter : lowpassFilters) {
                 filter.coefficients = dsp::IIR::Coefficients<float>::makeLowPass(getSampleRate(), newValue, SQRT_2_OVER_2);

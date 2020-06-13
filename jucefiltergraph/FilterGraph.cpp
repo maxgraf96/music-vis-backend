@@ -35,10 +35,12 @@ FilterGraph::FilterGraph(AudioPluginAudioProcessor& p, AudioProcessorValueTreeSt
 
     // Update values
     lowpassCutoff.referTo(vts.getParameterAsValue("lowpassCutoff"));
-    lowpassCutoff = vts.getParameter("lowpassCutoff")->getValue() * vts.getParameter("lowpassCutoff")->getNormalisableRange().end;
+    float lowpassCutoffVal = *vts.getRawParameterValue("lowpassCutoff");
+    lowpassCutoff = lowpassCutoffVal;
 
     highpassCutoff.referTo(vts.getParameterAsValue("highpassCutoff"));
-    highpassCutoff = vts.getParameter("highpassCutoff")->getValue() * vts.getParameter("highpassCutoff")->getNormalisableRange().end;
+    float highpassCutoffVal = *vts.getRawParameterValue("highpassCutoff");
+    highpassCutoff = highpassCutoffVal;
 
     numberOfBands = vts.getRawParameterValue("numberOfBands");
 
@@ -65,8 +67,6 @@ void FilterGraph::paint (Graphics& g)
     // paint the display background
     g.setGradientFill (ColourGradient (Colour (0xff232338), width / 2, height / 2, Colour (0xff21222a), 2.5f, height / 2, true));
     g.fillRect (2.5f, 2.5f, width - 5, height - 5);
-    
-
 
     for (FilterInfo& filterInfo : filterVector){
         // Clear trace path
@@ -252,14 +252,10 @@ void FilterGraph::renderTooltip(Point<int>& mousePosRel, Point<int>& mousePosAbs
 void FilterGraph::parameterChanged(const String& parameterID, float newValue)
 {
     if (parameterID == "lowpassCutoff") {
-    	// Update cutoff
-        //updateFilter(0, newValue);
     	// Repaint asynchronously
         sendChangeMessage();
     }
     if (parameterID == "highpassCutoff") {
-        // Update cutoff
-        //updateFilter(1, newValue);
         // Repaint asynchronously
         sendChangeMessage();
     }
