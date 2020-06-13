@@ -393,6 +393,14 @@ void AudioPluginAudioProcessor::parameterChanged(const String &parameterID, floa
     if(parameterID == "numberOfBands"){
         magicState.getPropertyAsValue(MID_BAND_VISIBLE_ID.toString()).setValue(newValue == 2.0f);
         magicState.getPropertyAsValue(MULTIBAND_ENABLED.toString()).setValue(newValue > 0.0f);
+
+        // If 2 bands are selected snap highpass cutoff value to lowpass cutoff value
+        if(newValue == 1.0f){
+            magicState.getValueTreeState().getParameterAsValue("highpassCutoff").setValue(paramLowpassCutoff.getValue());
+            for (auto & filter : highpassFilters) {
+                filter.coefficients = dsp::IIR::Coefficients<float>::makeHighPass(getSampleRate(), paramLowpassCutoff.getValue(), SQRT_2_OVER_2);
+            }
+        }
     }
 }
 
