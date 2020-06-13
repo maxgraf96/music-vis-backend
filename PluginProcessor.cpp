@@ -324,7 +324,8 @@ juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
     registerFilterGraph(*builder, this);
     magicState.setLastEditorSize(1200, 1024);
 
-    return new foleys::MagicPluginEditor (magicState, MyBinaryData::getMagicXML(), MyBinaryData::getMagicXMLSize(), std::move (builder));
+    return new foleys::MagicPluginEditor(magicState, BinaryData::musicvisbackend_xml, BinaryData::musicvisbackend_xmlSize, std::move(builder));
+//    return new foleys::MagicPluginEditor (magicState, MyBinaryData::getMagicXML(), MyBinaryData::getMagicXMLSize(), std::move (builder));
 }
 
 //==============================================================================

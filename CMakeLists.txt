@@ -51,7 +51,7 @@ juce_add_plugin(music-vis-backend
     PLUGIN_MANUFACTURER_CODE MaxG               # A four-character manufacturer id with at least one upper-case character
     PLUGIN_CODE AAB0                            # A unique four-character plugin id with at least one upper-case character
     FORMATS AU VST3 Standalone                  # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
-    PRODUCT_NAME "music-vis-backend")        # The name of the final executable, which can differ from the target name
+    PRODUCT_NAME "music-vis-backend")           # The name of the final executable, which can differ from the target name
 
 include_directories(
         "/usr/local/include" "/usr/local/include/eigen3"
@@ -95,7 +95,6 @@ target_sources(music-vis-backend PRIVATE
         jucefiltergraph/FilterInfo.cpp
         jucefiltergraph/FilterGraph.cpp
         foleys_gui_magic/foleys_gui_magic.cpp
-        foleys_gui_magic/MyBinaryData.h
         )
 
 # `target_compile_definitions` adds some preprocessor definitions to our target. In a Projucer
@@ -119,7 +118,14 @@ target_compile_definitions(music-vis-backend
 # static library. These source files can be of any kind (wav data, images, fonts, icons etc.).
 # Conversion to binary-data will happen when your target is built.
 
-# juce_add_binary_data(AudioPluginData SOURCES ...)
+juce_add_binary_data(AudioPluginData
+        SOURCES
+        foleys_gui_magic/music-vis-backend.xml
+        )
+
+set_target_properties(
+        AudioPluginData PROPERTIES POSITION_INDEPENDENT_CODE TRUE
+)
 
 # `target_link_libraries` links libraries and JUCE modules to other libraries or executables. Here,
 # we're linking our executable target to the `juce::juce_audio_utils` module. Inter-module
@@ -139,7 +145,7 @@ configure_file(foleys_gui_magic/music-vis-backend.xml music-vis-backend_artefact
 
 
 target_link_libraries(music-vis-backend PRIVATE
-    # AudioPluginData           # If we'd created a binary data target, we'd link to it here
+        AudioPluginData           # If we'd created a binary data target, we'd link to it here
         juce::juce_audio_utils
         juce::juce_dsp
         essentia -L/usr/local/lib

@@ -8,7 +8,7 @@
 #include "Constants.h"
 #include <mapper/mapper_cpp.h>
 #include "foleys_gui_magic/foleys_gui_magic.h"
-#include "foleys_gui_magic/MyBinaryData.h"
+#include "BinaryData.h"
 
 using namespace juce;
 using namespace std;
