@@ -9,6 +9,7 @@
 #include <mapper/mapper_cpp.h>
 #include "foleys_gui_magic/foleys_gui_magic.h"
 #include "BinaryData.h"
+#include "FeatureSlot.h"
 
 using namespace juce;
 using namespace std;
@@ -93,6 +94,7 @@ private:
     foleys::MagicProcessorState magicState { *this, valueTreeState };
     // filtergraph component registration
     void registerFilterGraph(foleys::MagicGUIBuilder& builder, AudioPluginAudioProcessor* processor);
+    void registerFeatureSlot(foleys::MagicGUIBuilder &builder, AudioPluginAudioProcessor *processor);
 
     Label* spectralCentroidLabel;
 
@@ -101,33 +103,48 @@ private:
     // Necessary for enabling tooltips
     std::unique_ptr<TooltipWindow> tooltip;
 
-    // Will contain copy of the JUCE audio buffer
-    vector<Real> eAudioBuffer;
+    // Values estimated by Essentia are marked with an "e" prefix
+    // Will contain copy of the global JUCE audio buffer (not subdivided into bands)
+    // This buffer is used in the calculation of global audio features
+    vector<Real> eGlobalAudioBuffer;
+    // Low, mid and high band buffers
+    shared_ptr<vector<Real>>   eLowAudioBuffer;
+    vector<Real> eMidAudioBuffer;
+    vector<Real> eHighAudioBuffer;
     // Will contain JUCE audio buffer after windowing
     vector<Real> windowedFrame;
     // Will contain the spectrum data
-    vector<Real> spectrumData;
-    Real spectralCentroid = 0.0f;
-    Real estimatedPitch = 0.0f;
-    Real pitchConfidence = 0.0f;
+    vector<Real> eSpectrumData;
+    Real eSpectralCentroid = 0.0f;
+    Real ePitchYIN = 0.0f;
+    Real ePitchConfidence = 0.0f;
+    Real eLoudness = 0.0f;
 
-    unique_ptr<Algorithm> windowing;
-    unique_ptr<Algorithm> spectrum;
-    unique_ptr<Algorithm> mfcc;
-    unique_ptr<Algorithm> specCentroid;
-    unique_ptr<Algorithm> pitchYin;
+    // Essentia algorithms are marked by an "a" prefix
+    unique_ptr<Algorithm> aWindowing;
+    unique_ptr<Algorithm> aSpectrum;
+    unique_ptr<Algorithm> aMFCC;
+    unique_ptr<Algorithm> aSpectralCentroid;
+    unique_ptr<Algorithm> aPitchYIN;
+    unique_ptr<Algorithm> aLoudness;
 
     // Libmapper stuff
-    unique_ptr<mapper::Device> dev;
-    unique_ptr<mapper::Signal> sensor1;
-    unique_ptr<mapper::Signal> sensor2;
-    unique_ptr<mapper::Signal> pitchSensor;
+    unique_ptr<mapper::Device> libmapperDevice;
+    unique_ptr<mapper::Signal> sensorSpectralCentroid;
+    unique_ptr<mapper::Signal> sensorSpectrum;
+    unique_ptr<mapper::Signal> sensorPitchYIN;
+    unique_ptr<mapper::Signal> sensorLoudness;
+
+    // Feature slots
+    vector<FeatureSlot*> lowBandSlots;
+    vector<FeatureSlot*> midBandSlots;
+    vector<FeatureSlot*> highBandSlots;
 
     // Called if one of the parameters is changed, either through UI interaction or
     // manipulation from the host (such as automations)
     void parameterChanged(const String& parameterID, float newValue) override;
 
-    void timerCallback();
+    void timerCallback() override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
     //==============================================================================
@@ -136,6 +153,8 @@ private:
 // Identifiers for GUI interaction
 static Identifier SPECTRAL_CENTROID_ID = "spectralCentroidValue";
 static Identifier PITCH_YIN_ID = "pitchYINValue";
-static Identifier MID_BAND_VISIBLE_ID = "isMidBandVisible";
-static Identifier MID_MAX_WIDTH = "midMaxWidth";
-static Identifier MULTIBAND_ENABLED = "multiBandEnabled";
+static Identifier MID_MAX_WIDTH_ID = "midMaxWidth";
+static Identifier MULTIBAND_ENABLED_ID = "multiBandEnabled";
+static Identifier MIDBAND_ENABLED_ID = "midBandEnabled";
+static Identifier LOUDNESS_ID = "loudnessValue";
+

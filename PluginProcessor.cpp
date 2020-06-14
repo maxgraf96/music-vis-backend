@@ -48,7 +48,47 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                                  "highSolo",
                                  "High Band Solo",
                                  false
-                         )
+                         ),
+                         // Sub band algorithm slot selectors
+                         // Low band
+                           make_unique<AudioParameterChoice>(
+                                   "lowSlot1",
+                                   "Low Band Slot 1 Algorithm",
+                                   featureSlotAlgorithmOptions,
+                                   0
+                           ),
+                           make_unique<AudioParameterChoice>(
+                                   "lowSlot2",
+                                   "Low Band Slot 2 Algorithm",
+                                   featureSlotAlgorithmOptions,
+                                   0
+                           ),
+                           // Mid band
+                           make_unique<AudioParameterChoice>(
+                                   "midSlot1",
+                                   "Mid Band Slot 1 Algorithm",
+                                   featureSlotAlgorithmOptions,
+                                   0
+                           ),
+                           make_unique<AudioParameterChoice>(
+                                   "midSlot2",
+                                   "Mid Band Slot 2 Algorithm",
+                                   featureSlotAlgorithmOptions,
+                                   0
+                           ),
+                           // High band
+                           make_unique<AudioParameterChoice>(
+                                   "highSlot1",
+                                   "High Band Slot 1 Algorithm",
+                                   featureSlotAlgorithmOptions,
+                                   0
+                           ),
+                           make_unique<AudioParameterChoice>(
+                                   "highSlot2",
+                                   "High Band Slot 2 Algorithm",
+                                   featureSlotAlgorithmOptions,
+                                   0
+                           ),
                          })
 {
     // Initialise listeners for parameters
@@ -67,14 +107,21 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
     paramMidSolo = magicState.getValueTreeState().getRawParameterValue("midSolo");
     paramHighSolo = magicState.getValueTreeState().getRawParameterValue("highSolo");
 
+    // Initialise essentia
+    essentia::init();
+
     // Setup libmapper
-    dev = make_unique<mapper::Device>("test");
-    sensor1 = make_unique<mapper::Signal>(dev->add_output_signal("sensor1", 1, 'f', nullptr, nullptr, nullptr));
-    sensor2 = make_unique<mapper::Signal>(dev->add_output_signal("sensor2", 128, 'f', 0, 0, 0));
-    pitchSensor = make_unique<mapper::Signal>(dev->add_output_signal("pitchSensor", 1, 'f', 0, 0, 0));
+    libmapperDevice = make_unique<mapper::Device>("test");
+    sensorSpectralCentroid = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("spectralCentroid", 1, 'f', nullptr, nullptr, nullptr));
+    sensorSpectrum = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("spectrum", 128, 'f', 0, 0, 0));
+    sensorPitchYIN = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("pitchYIN", 1, 'f', 0, 0, 0));
+    sensorLoudness = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("loudness", 1, 'f', 0, 0, 0));
 
     // Start timer for GUI updates
     startTimer(100);
+
+    // Setup sub-band buffers
+    eLowAudioBuffer = make_shared<vector<Real>>();
 }
 
 void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
@@ -94,27 +141,29 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         buffer.clear (i, 0, buffer.getNumSamples());
 
     // Clear essentia audiobuffer
-    eAudioBuffer.clear();
+    eGlobalAudioBuffer.clear();
 
     auto* reader = buffer.getReadPointer(0);
     for (int i = 0; i < buffer.getNumSamples(); i++){
-        eAudioBuffer.push_back(reader[i]);
+        eGlobalAudioBuffer.push_back(reader[i]);
     }
 
-    windowing->compute();
-    spectrum->compute();
-    specCentroid->compute();
-    pitchYin->compute();
+    aWindowing->compute();
+    aSpectrum->compute();
+    aSpectralCentroid->compute();
+    aPitchYIN->compute();
+    aLoudness->compute();
 
     // Poll libmapper device
-    dev->poll();
+    libmapperDevice->poll();
 
     // Send spectral centroid to libmapper
-    sensor1->update(spectralCentroid);
-    sensor2->update(spectrumData);
-    pitchSensor->update(estimatedPitch);
+    sensorSpectralCentroid->update(eSpectralCentroid);
+    sensorSpectrum->update(eSpectrumData);
+    sensorPitchYIN->update(ePitchYIN);
+    sensorLoudness->update(eLoudness);
 
-    // Multiband processing (if enabled)
+    // Additional multiband processing (if more than 1 band is seleted)
     if(*paramNumberOfBands > 0.0f){
         lowBuffer->clear();
         midBuffer->clear();
@@ -143,9 +192,40 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             midBuffer->addFrom(channel, 0, highBuffer->getReadPointer(channel), numSamples, -1.0f);
         }
 
+        // Send to sub-bands and process
+        // Clear essentia sub band buffers
+        eLowAudioBuffer->clear();
+        eMidAudioBuffer.clear();
+        eHighAudioBuffer.clear();
+
+        auto* lowReader = lowBuffer->getReadPointer(0);
+        auto* midReader = midBuffer->getReadPointer(0);
+        auto* highReader = highBuffer->getReadPointer(0);
+
+        for (int i = 0; i < buffer.getNumSamples(); i++){
+            eLowAudioBuffer->emplace_back(lowReader[i]);
+            eMidAudioBuffer.emplace_back(midReader[i]);
+            eHighAudioBuffer.emplace_back(highReader[i]);
+        }
+
+        // 2 bands (low and high) => ignore mid band
+        for(auto& featureSlot : lowBandSlots){
+            featureSlot->compute();
+        }
+        for(auto& featureSlot : highBandSlots){
+            featureSlot->compute();
+        }
+        // Also process mid-band if three bands are selected
+        if(*paramNumberOfBands == 2.0f){
+            for(auto& featureSlot : midBandSlots){
+                featureSlot->compute();
+            }
+        }
+
         // Clear main buffer
         buffer.clear();
 
+        // Playback
         // If no channel is soloed, play all streams back
         if (noSolo()) {
             for (int channel = 0; channel < totalNumOutputChannels; channel++) {
@@ -175,34 +255,43 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 //==============================================================================
 void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Initialise essentia
-    essentia::init();
-    // Create algo pool
-    Pool pool;
+    // Reinitialise essentia if not initialised
+    if(!essentia::isInitialized()){
+        essentia::init();
+    }
+
+    // Store sr in state management
+    magicState.getPropertyAsValue("sampleRate").setValue(sampleRate);
 
     // Create algorithms
     standard::AlgorithmFactory& factory = standard::AlgorithmFactory::instance();
-    windowing.reset(factory.create("Windowing", "type", "blackmanharris62"));
-    spectrum.reset(factory.create("Spectrum"));
-    mfcc.reset(factory.create("MFCC"));
-    specCentroid.reset(factory.create("SpectralCentroidTime", "sampleRate", sampleRate));
-    pitchYin.reset(factory.create("PitchYin", "sampleRate", sampleRate, "frameSize", samplesPerBlock));
+    aWindowing.reset(factory.create("Windowing", "type", "blackmanharris62"));
+    aSpectrum.reset(factory.create("Spectrum"));
+    aMFCC.reset(factory.create("MFCC"));
+    aSpectralCentroid.reset(factory.create("SpectralCentroidTime", "sampleRate", sampleRate));
+    aPitchYIN.reset(factory.create("PitchYin", "sampleRate", sampleRate, "frameSize", samplesPerBlock));
+    aLoudness.reset(factory.create("Loudness"));
 
     // Connect algorithms
-    windowing->input("frame").set(eAudioBuffer);
-    windowing->output("frame").set(windowedFrame);
-    spectrum->input("frame").set(windowedFrame);
-    spectrum->output("spectrum").set(spectrumData);
+    aWindowing->input("frame").set(eGlobalAudioBuffer);
+    aWindowing->output("frame").set(windowedFrame);
+    aSpectrum->input("frame").set(windowedFrame);
+    aSpectrum->output("spectrum").set(eSpectrumData);
 
     // Pitch detection
-    pitchYin->input("signal").set(eAudioBuffer);
-    pitchYin->output("pitch").set(estimatedPitch);
-    pitchYin->output("pitchConfidence").set(pitchConfidence);
+    aPitchYIN->input("signal").set(eGlobalAudioBuffer);
+    aPitchYIN->output("pitch").set(ePitchYIN);
+    aPitchYIN->output("pitchConfidence").set(ePitchConfidence);
 
-    specCentroid->input("array").set(eAudioBuffer);
-    specCentroid->output("centroid").set(spectralCentroid);
+    // Spectral centroid
+    aSpectralCentroid->input("array").set(eGlobalAudioBuffer);
+    aSpectralCentroid->output("centroid").set(eSpectralCentroid);
 
-    // Setup buffers
+    // Loudness
+    aLoudness->input("signal").set(eGlobalAudioBuffer);
+    aLoudness->output("loudness").set(eLoudness);
+
+    // Setup band buffers
     lowBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
     midBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
     highBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
@@ -214,6 +303,9 @@ bool AudioPluginAudioProcessor::noSolo() {
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
 {
+    lowBandSlots.clear();
+    midBandSlots.clear();
+    highBandSlots.clear();
 }
 
 //==============================================================================
@@ -322,6 +414,7 @@ juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
     builder->registerJUCEFactories();
 
     registerFilterGraph(*builder, this);
+    registerFeatureSlot(*builder, this);
     magicState.setLastEditorSize(1200, 1024);
 
     return new foleys::MagicPluginEditor(magicState, BinaryData::musicvisbackend_xml, BinaryData::musicvisbackend_xmlSize, std::move(builder));
@@ -336,28 +429,27 @@ void AudioPluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData
 
 void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
+    // Load plugin state from disk
     magicState.setStateInformation (data, sizeInBytes, getActiveEditor());
 
     // Set filter cutoff frequencies
     paramLowpassCutoff = paramLowpassCutoff.getValue();
     paramHighpassCutoff = paramHighpassCutoff.getValue();
-    auto test = paramLowpassCutoff.getValue();
-    auto testhi = paramHighpassCutoff.getValue();
     for (int i = 0; i < lowpassFilters.size(); i++) {
         lowpassFilters[i].coefficients = dsp::IIR::Coefficients<float>::makeLowPass(getSampleRate(), paramLowpassCutoff.getValue(), SQRT_2_OVER_2);
         highpassFilters[i].coefficients = dsp::IIR::Coefficients<float>::makeHighPass(getSampleRate(), paramHighpassCutoff.getValue(), SQRT_2_OVER_2);
     }
 
     // Show / hide mid band
-    magicState.getPropertyAsValue(MID_BAND_VISIBLE_ID.toString()).setValue(*paramNumberOfBands == 2.0f);
+    magicState.getPropertyAsValue(MIDBAND_ENABLED_ID.toString()).setValue(*paramNumberOfBands == 2.0f);
 }
 
 vector <Real> &AudioPluginAudioProcessor::getSpectrumData() {
-    return spectrumData;
+    return eSpectrumData;
 }
 
 Real &AudioPluginAudioProcessor::getSpectralCentroid() {
-    return spectralCentroid;
+    return eSpectralCentroid;
 }
 
 void AudioPluginAudioProcessor::parameterChanged(const String &parameterID, float newValue) {
@@ -392,8 +484,8 @@ void AudioPluginAudioProcessor::parameterChanged(const String &parameterID, floa
         }
     }
     if(parameterID == "numberOfBands"){
-        magicState.getPropertyAsValue(MID_BAND_VISIBLE_ID.toString()).setValue(newValue == 2.0f);
-        magicState.getPropertyAsValue(MULTIBAND_ENABLED.toString()).setValue(newValue > 0.0f);
+        magicState.getPropertyAsValue(MULTIBAND_ENABLED_ID.toString()).setValue(newValue > 0.0f);
+        magicState.getPropertyAsValue(MIDBAND_ENABLED_ID.toString()).setValue(newValue == 2.0f);
 
         // If 2 bands are selected snap highpass cutoff value to lowpass cutoff value
         if(newValue == 1.0f){
@@ -418,8 +510,40 @@ void AudioPluginAudioProcessor::registerFilterGraph(foleys::MagicGUIBuilder& bui
 
     builder.registerFactory ("FilterGraph", [processor](const ValueTree&)
     {
-        return std::make_unique<FilterGraph>(*processor, processor->magicState.getValueTreeState(), *processor->tooltip);
+        return make_unique<FilterGraph>(*processor, processor->magicState.getValueTreeState(), *processor->tooltip);
     });
+}
+
+void AudioPluginAudioProcessor::registerFeatureSlot(foleys::MagicGUIBuilder& builder, AudioPluginAudioProcessor* processor) {
+    builder.registerFactory ("FeatureSlot", [processor](const ValueTree&)
+    {
+        return make_unique<FeatureSlot>(*processor->libmapperDevice, processor->magicState);
+    });
+    // Add settable properties
+    builder.addSettableProperty ("FeatureSlot",
+                                std::make_unique<foleys::SettableChoiceProperty>
+                                        (foleys::IDs::featureSlotParameter,
+                                         [&] (juce::Component* component, juce::var value, const juce::NamedValueSet&)
+                                         {
+                                             if (auto* featureSlot = dynamic_cast<FeatureSlot*>(component)){
+                                                 String valStr = value.toString();
+                                                 featureSlot->attachToParameter(valStr, magicState.getValueTreeState());
+                                                 // Add feature slots to vector for access in processor
+                                                 if(valStr.contains("low")
+                                                    && find(lowBandSlots.begin(), lowBandSlots.end(), featureSlot) == lowBandSlots.end()){
+                                                     featureSlot->setInputAudioBuffer(eLowAudioBuffer);
+                                                     lowBandSlots.emplace_back(featureSlot);
+                                                 } else if(valStr.contains("mid")
+                                                       && find(midBandSlots.begin(), midBandSlots.end(), featureSlot) == midBandSlots.end()){
+                                                     midBandSlots.emplace_back(featureSlot);
+                                                 } else if(valStr.contains("high")
+                                                       && find(highBandSlots.begin(), highBandSlots.end(), featureSlot) == highBandSlots.end()){
+                                                     highBandSlots.emplace_back(featureSlot);
+                                                 }
+                                             }
+                                         },
+                                         juce::String(),
+                                         foleys::SettableProperty::Parameter));
 }
 
 Component *AudioPluginAudioProcessor::getChildComponentWithID(Component *parent, String id) {
@@ -439,8 +563,13 @@ Component *AudioPluginAudioProcessor::getChildComponentWithID(Component *parent,
 }
 
 void AudioPluginAudioProcessor::timerCallback() {
-    magicState.getPropertyAsValue(SPECTRAL_CENTROID_ID.toString()).setValue(roundToInt(spectralCentroid));
-    magicState.getPropertyAsValue(PITCH_YIN_ID.toString()).setValue(roundToInt(estimatedPitch));
+    // Display current spectral centroid
+    magicState.getPropertyAsValue(SPECTRAL_CENTROID_ID.toString()).setValue(roundToInt(eSpectralCentroid));
+    // Only display pitch if confidence is greater than chance
+    auto pitchValue = ePitchConfidence > 0.5 ? ePitchYIN : -1;
+    magicState.getPropertyAsValue(PITCH_YIN_ID.toString()).setValue(roundToInt(pitchValue));
+    // Display current loudness
+    magicState.getPropertyAsValue(LOUDNESS_ID.toString()).setValue(roundToInt(eLoudness));
 }
 
 //==============================================================================

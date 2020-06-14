@@ -60,6 +60,7 @@ namespace IDs
     static juce::Identifier lookAndFeel  { "lookAndFeel" };
     static juce::Identifier tooltip      { "tooltip" };
     static juce::Identifier parameter    { "parameter" };
+    static juce::Identifier featureSlotParameter    { "featureSlotParameter" };
     static juce::Identifier parameterX   { "parameter-x" };
     static juce::Identifier parameterY   { "parameter-y" };
     static juce::Identifier parameterRightClick { "parameter-right-click" };
