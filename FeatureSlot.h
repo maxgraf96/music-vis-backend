@@ -16,7 +16,7 @@ using namespace juce;
 using namespace essentia;
 using namespace essentia::standard;
 
-class FeatureSlot : public Component, private ComboBox::Listener, Value::Listener {
+class FeatureSlot : public Component, Value::Listener {
 public:
 
     enum Band {
@@ -29,18 +29,19 @@ public:
     ~FeatureSlot();
 
     void initialiseAlgorithm(String algoStr);
-    void attachToParameter(String value, AudioProcessorValueTreeState& vts);
+    void attachToParameter(const String& value, AudioProcessorValueTreeState& vts);
 
     void compute();
 
     void paint (Graphics&) override;
     void resized() override;
 
-    int getBand();
+    void setBand(Band band);
+    Band getBand();
 
-    void comboBoxChanged (ComboBox* comboBoxThatHasChanged) override;
     void valueChanged (Value &value) override;
     void setInputAudioBuffer(shared_ptr<vector<Real>> audioBuffer);
+    void setSlotNumber(int number);
 
 private:
     // State management
@@ -50,7 +51,6 @@ private:
     shared_ptr<vector<Real>> inputAudioBuffer;
     // Will contain the output if the output is a scalar value
     Real outputScalar = -1.0f;
-
     Value outputValue;
 
     // Factory for creating the algorithm
@@ -61,6 +61,7 @@ private:
 
     // Reference to the main libmapper device
     mapper::Device& libmapperDevice;
+    unique_ptr<mapper::Signal> sensor;
 
     Band band = LOW;
 

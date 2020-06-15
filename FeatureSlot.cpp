@@ -13,15 +13,11 @@ FeatureSlot::FeatureSlot(mapper::Device& libmapperDev, foleys::MagicProcessorSta
     valueLabel = make_unique<Label>("displayValue", "");
     valueLabel->getTextValue().referTo(outputValue);
 
-    // Position elements
-    algorithmComboBox->setBounds(0, 0, 120, 40);
-    valueLabel->setBounds(0, 50, 120, 20);
-
-    algorithmComboBox->addListener(this);
-    algorithmComboBox->getSelectedIdAsValue().addListener(this);
-
+    // Add to parent
     addAndMakeVisible(*algorithmComboBox);
     addAndMakeVisible(*valueLabel);
+
+    algorithmComboBox->getSelectedIdAsValue().addListener(this);
 
     setSize(200, 100);
 }
@@ -34,7 +30,9 @@ void FeatureSlot::paint(Graphics &) {
 }
 
 void FeatureSlot::resized() {
-
+    // Position elements
+    algorithmComboBox->setBounds(0, 0, getParentWidth() * 0.9, 40);
+    valueLabel->setBounds(0, 50, getParentWidth() * 0.9, 20);
 }
 
 void FeatureSlot::compute() {
@@ -46,8 +44,12 @@ void FeatureSlot::compute() {
     }
 }
 
-int FeatureSlot::getBand() {
+FeatureSlot::Band FeatureSlot::getBand() {
     return band;
+}
+
+void FeatureSlot::setBand(Band band){
+    this->band = band;
 }
 
 void FeatureSlot::initialiseAlgorithm(String algoStr) {
@@ -62,15 +64,21 @@ void FeatureSlot::initialiseAlgorithm(String algoStr) {
         algorithm->input("array").set(*inputAudioBuffer);
         algorithm->output("centroid").set(outputScalar);
     }
+
+    // Initialise libmapper sensor
+    // Remove previous signal from libmapper
+    if(sensor != nullptr){
+        libmapperDevice.remove_signal(*sensor);
+    }
+    // Add new signal
+    std::string signalName = band == LOW ? "Low" : band == MID ? "Mid" : "High";
+    signalName.append(" Slot ").append(to_string(slotNumber)).append(": ").append(algoStr.toStdString());
+
+    sensor = make_unique<mapper::Signal>(libmapperDevice.add_output_signal(signalName, 1, 'f', 0, 0, 0));
 }
 
-void FeatureSlot::attachToParameter(String value, AudioProcessorValueTreeState& vts){
+void FeatureSlot::attachToParameter(const String& value, AudioProcessorValueTreeState& vts){
     algorithmComboBox->attachToParameter (value, vts);
-}
-
-void FeatureSlot::comboBoxChanged(ComboBox* comboBoxThatHasChanged) {
-    auto newVal = comboBoxThatHasChanged->getSelectedId();
-
 }
 
 void FeatureSlot::valueChanged (Value &value){
@@ -86,4 +94,8 @@ void FeatureSlot::valueChanged (Value &value){
 
 void FeatureSlot::setInputAudioBuffer(shared_ptr<vector<Real>> audioBuffer) {
     inputAudioBuffer = audioBuffer;
+}
+
+void FeatureSlot::setSlotNumber(int number) {
+    this->slotNumber = number;
 }

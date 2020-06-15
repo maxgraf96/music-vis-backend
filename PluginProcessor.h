@@ -109,8 +109,8 @@ private:
     vector<Real> eGlobalAudioBuffer;
     // Low, mid and high band buffers
     shared_ptr<vector<Real>>   eLowAudioBuffer;
-    vector<Real> eMidAudioBuffer;
-    vector<Real> eHighAudioBuffer;
+    shared_ptr<vector<Real>> eMidAudioBuffer;
+    shared_ptr<vector<Real>> eHighAudioBuffer;
     // Will contain JUCE audio buffer after windowing
     vector<Real> windowedFrame;
     // Will contain the spectrum data
