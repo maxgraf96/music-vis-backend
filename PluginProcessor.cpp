@@ -120,10 +120,13 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
     // Start timer for GUI updates
     startTimer(100);
 
-    // Setup sub-band buffers
-    eLowAudioBuffer = make_shared<vector<Real>>();
-    eMidAudioBuffer = make_shared<vector<Real>>();
-    eHighAudioBuffer = make_shared<vector<Real>>();
+    lowBandSlots.clear();
+    highBandSlots.clear();
+
+    for (int i = 0; i < NUMBER_OF_SLOTS; i++){
+        lowBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::LOW, eLowAudioBuffer, i + 1));
+        highBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::HIGH, eHighAudioBuffer, i + 1));
+    }
 }
 
 void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
@@ -196,18 +199,18 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
         // Send to sub-bands and process
         // Clear essentia sub band buffers
-        eLowAudioBuffer->clear();
-        eMidAudioBuffer->clear();
-        eHighAudioBuffer->clear();
+        eLowAudioBuffer.clear();
+        eMidAudioBuffer.clear();
+        eHighAudioBuffer.clear();
 
         auto* lowReader = lowBuffer->getReadPointer(0);
         auto* midReader = midBuffer->getReadPointer(0);
         auto* highReader = highBuffer->getReadPointer(0);
 
         for (int i = 0; i < buffer.getNumSamples(); i++){
-            eLowAudioBuffer->emplace_back(lowReader[i]);
-            eMidAudioBuffer->emplace_back(midReader[i]);
-            eHighAudioBuffer->emplace_back(highReader[i]);
+            eLowAudioBuffer.emplace_back(lowReader[i]);
+            eMidAudioBuffer.emplace_back(midReader[i]);
+            eHighAudioBuffer.emplace_back(highReader[i]);
         }
 
         // 2 bands (low and high) => ignore mid band
@@ -297,6 +300,14 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     lowBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
     midBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
     highBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
+
+    lowBandSlots.clear();
+    highBandSlots.clear();
+
+    for (int i = 0; i < NUMBER_OF_SLOTS; i++){
+        lowBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::LOW, eLowAudioBuffer, i + 1));
+        highBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::HIGH, eHighAudioBuffer, i + 1));
+    }
 }
 
 bool AudioPluginAudioProcessor::noSolo() {
@@ -305,9 +316,15 @@ bool AudioPluginAudioProcessor::noSolo() {
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
 {
-    lowBandSlots.clear();
-    midBandSlots.clear();
-    highBandSlots.clear();
+    magicState.getValueTreeState().removeParameterListener("numberOfBands", this);
+    magicState.getValueTreeState().removeParameterListener("lowpassCutoff", this);
+    magicState.getValueTreeState().removeParameterListener("highpassCutoff", this);
+    magicState.getValueTreeState().removeParameterListener("lowSolo", this);
+    magicState.getValueTreeState().removeParameterListener("midSolo", this);
+    magicState.getValueTreeState().removeParameterListener("highSolo", this);
+
+    // Shutdown essentia
+    essentia::shutdown();
 }
 
 //==============================================================================
@@ -377,8 +394,6 @@ void AudioPluginAudioProcessor::changeProgramName (int index, const juce::String
 
 void AudioPluginAudioProcessor::releaseResources()
 {
-    // Shutdown essentia
-    essentia::shutdown();
 }
 
 bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -416,7 +431,7 @@ juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
     builder->registerJUCEFactories();
 
     registerFilterGraph(*builder, this);
-    registerFeatureSlot(*builder, this);
+    registerFeatureSlotGUI(*builder, this);
     magicState.setLastEditorSize(1200, 1024);
 
     return new foleys::MagicPluginEditor(magicState, BinaryData::musicvisbackend_xml, BinaryData::musicvisbackend_xmlSize, std::move(builder));
@@ -516,10 +531,10 @@ void AudioPluginAudioProcessor::registerFilterGraph(foleys::MagicGUIBuilder& bui
     });
 }
 
-void AudioPluginAudioProcessor::registerFeatureSlot(foleys::MagicGUIBuilder& builder, AudioPluginAudioProcessor* processor) {
+void AudioPluginAudioProcessor::registerFeatureSlotGUI(foleys::MagicGUIBuilder& builder, AudioPluginAudioProcessor* processor) {
     builder.registerFactory ("FeatureSlot", [processor](const ValueTree&)
     {
-        return make_unique<FeatureSlot>(*processor->libmapperDevice, processor->magicState);
+        return make_unique<FeatureSlotGUI>(processor->magicState);
     });
     // Add settable properties
     builder.addSettableProperty ("FeatureSlot",
@@ -527,52 +542,28 @@ void AudioPluginAudioProcessor::registerFeatureSlot(foleys::MagicGUIBuilder& bui
                                         (foleys::IDs::featureSlotParameter,
                                          [&] (juce::Component* component, juce::var value, const juce::NamedValueSet&)
                                          {
-                                             if (auto* featureSlot = dynamic_cast<FeatureSlot*>(component)){
+                                             if (auto* featureSlot = dynamic_cast<FeatureSlotGUI*>(component)){
                                                  String valStr = value.toString();
-                                                 featureSlot->attachToParameter(valStr, magicState.getValueTreeState());
 
                                                  // Get current slot number
                                                  char slot = valStr.toStdString().back();
                                                  int slotNo = slot - '0';
-                                                 featureSlot->setSlotNumber(slotNo);
 
                                                  // Add feature slots to vector for access in processor
-                                                 if(valStr.contains("low")
-                                                    && find(lowBandSlots.begin(), lowBandSlots.end(), featureSlot) == lowBandSlots.end()){
-                                                     featureSlot->setInputAudioBuffer(eLowAudioBuffer);
-                                                     featureSlot->setBand(FeatureSlot::LOW);
-                                                     lowBandSlots.emplace_back(featureSlot);
-                                                 } else if(valStr.contains("mid")
-                                                       && find(midBandSlots.begin(), midBandSlots.end(), featureSlot) == midBandSlots.end()){
-//                                                     featureSlot->setInputAudioBuffer(eMidAudioBuffer);
-                                                     featureSlot->setBand(FeatureSlot::MID);
-                                                     midBandSlots.emplace_back(featureSlot);
-                                                 } else if(valStr.contains("high")
-                                                       && find(highBandSlots.begin(), highBandSlots.end(), featureSlot) == highBandSlots.end()){
-                                                     featureSlot->setInputAudioBuffer(eHighAudioBuffer);
-                                                     featureSlot->setBand(FeatureSlot::HIGH);
-                                                     highBandSlots.emplace_back(featureSlot);
+                                                 if(valStr.contains("low")) {
+                                                     featureSlot->registerValue(lowBandSlots[slotNo - 1]->getOutputValue());
+                                                 } else if(valStr.contains("mid")){
+
+                                                 } else if(valStr.contains("high")){
+                                                     featureSlot->registerValue(highBandSlots[slotNo - 1]->getOutputValue());
                                                  }
+
+                                                 // Attach to value last
+                                                 featureSlot->attachToParameter(valStr, magicState.getValueTreeState());
                                              }
                                          },
                                          juce::String(),
                                          foleys::SettableProperty::Parameter));
-}
-
-Component *AudioPluginAudioProcessor::getChildComponentWithID(Component *parent, String id) {
-    for (int i = 0; i < parent->getNumChildComponents(); i++)
-    {
-        auto* childComp = parent->getChildComponent(i);
-        DBG(childComp->getComponentID());
-
-        if (childComp->getComponentID() == id)
-            return childComp;
-
-        if (auto c = getChildComponentWithID (childComp, id))
-            return c;
-    }
-
-    return nullptr;
 }
 
 void AudioPluginAudioProcessor::timerCallback() {

@@ -56,6 +56,7 @@ FilterGraph::~FilterGraph()
 	// Remove state management listeners
     vts.removeParameterListener("lowpassCutoff", this);
     vts.removeParameterListener("highpassCutoff", this);
+    vts.removeParameterListener("numberOfBands", this);
 }
 
 void FilterGraph::paint (Graphics& g)

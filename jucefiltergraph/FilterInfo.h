@@ -8,6 +8,8 @@
 
   ==============================================================================
 */
+#ifndef FILTER_INFO_H
+#define FILTER_INFO_H
 
 #include <juce_dsp/juce_dsp.h>
 #include "../PluginProcessor.h"
@@ -84,3 +86,5 @@ private:
 	// Filter gain, cutoff and q
     double gainValue;
 };
+
+#endif

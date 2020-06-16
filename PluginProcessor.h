@@ -5,11 +5,11 @@
 #include <essentia/algorithmfactory.h>
 #include <essentia/pool.h>
 #include "Utility.h"
-#include "Constants.h"
 #include <mapper/mapper_cpp.h>
 #include "foleys_gui_magic/foleys_gui_magic.h"
 #include "BinaryData.h"
-#include "FeatureSlot.h"
+#include "FeatureSlot/FeatureSlotProcessor.h"
+#include "FeatureSlot/FeatureSlotGUI.h"
 
 using namespace juce;
 using namespace std;
@@ -18,7 +18,7 @@ using namespace essentia::standard;
 
 //==============================================================================
 class AudioPluginAudioProcessor  : public juce::AudioProcessor,
-        private AudioProcessorValueTreeState::Listener, Timer
+private AudioProcessorValueTreeState::Listener, Timer
 {
 public:
     //==============================================================================
@@ -94,11 +94,9 @@ private:
     foleys::MagicProcessorState magicState { *this, valueTreeState };
     // filtergraph component registration
     void registerFilterGraph(foleys::MagicGUIBuilder& builder, AudioPluginAudioProcessor* processor);
-    void registerFeatureSlot(foleys::MagicGUIBuilder &builder, AudioPluginAudioProcessor *processor);
+    void registerFeatureSlotGUI(foleys::MagicGUIBuilder &builder, AudioPluginAudioProcessor *processor);
 
     Label* spectralCentroidLabel;
-
-    static Component* getChildComponentWithID(Component* parent, String id);
 
     // Necessary for enabling tooltips
     std::unique_ptr<TooltipWindow> tooltip;
@@ -108,9 +106,10 @@ private:
     // This buffer is used in the calculation of global audio features
     vector<Real> eGlobalAudioBuffer;
     // Low, mid and high band buffers
-    shared_ptr<vector<Real>>   eLowAudioBuffer;
-    shared_ptr<vector<Real>> eMidAudioBuffer;
-    shared_ptr<vector<Real>> eHighAudioBuffer;
+    vector<Real>   eLowAudioBuffer;
+    vector<Real> eMidAudioBuffer;
+    vector<Real> eHighAudioBuffer;
+
     // Will contain JUCE audio buffer after windowing
     vector<Real> windowedFrame;
     // Will contain the spectrum data
@@ -136,9 +135,10 @@ private:
     unique_ptr<mapper::Signal> sensorLoudness;
 
     // Feature slots
-    vector<FeatureSlot*> lowBandSlots;
-    vector<FeatureSlot*> midBandSlots;
-    vector<FeatureSlot*> highBandSlots;
+    vector<unique_ptr<FeatureSlotProcessor>> lowBandSlots;
+    vector<unique_ptr<FeatureSlotProcessor>> midBandSlots;
+    vector<unique_ptr<FeatureSlotProcessor>> highBandSlots;
+    int slotCounter = 0;
 
     // Called if one of the parameters is changed, either through UI interaction or
     // manipulation from the host (such as automations)

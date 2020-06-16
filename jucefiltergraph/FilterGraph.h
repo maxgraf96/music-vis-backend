@@ -8,10 +8,12 @@
   ==============================================================================
 */
 
+#ifndef FILTER_GRAPH_H
+#define FILTER_GRAPH_H
+
 #include "FilterInfo.h"
 #include "../Utility.h"
 #include "../PluginProcessor.h"
-#include "../Constants.h"
 
 using namespace std;
 
@@ -101,3 +103,5 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FilterGraph)
 };
+
+#endif

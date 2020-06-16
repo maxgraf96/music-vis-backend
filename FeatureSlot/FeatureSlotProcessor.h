@@ -2,21 +2,21 @@
 // Created by Max on 14/06/2020.
 //
 
-#ifndef MUSIC_VIS_BACKEND_FEATURESLOT_H
-#define MUSIC_VIS_BACKEND_FEATURESLOT_H
+#ifndef MUSIC_VIS_BACKEND_FEATURESLOTPROCESSOR_H
+#define MUSIC_VIS_BACKEND_FEATURESLOTPROCESSOR_H
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <essentia/algorithmfactory.h>
 #include <mapper/mapper_cpp.h>
-#include "foleys_gui_magic/foleys_gui_magic.h"
-#include "Constants.h"
+#include "../foleys_gui_magic/foleys_gui_magic.h"
+#include "../Constants.h"
 
 using namespace std;
 using namespace juce;
 using namespace essentia;
 using namespace essentia::standard;
 
-class FeatureSlot : public Component, Value::Listener {
+class FeatureSlotProcessor : private AudioProcessorValueTreeState::Listener {
 public:
 
     enum Band {
@@ -25,30 +25,29 @@ public:
         HIGH
     };
 
-    FeatureSlot(mapper::Device& libmapperDevice, foleys::MagicProcessorState& magicState);
-    ~FeatureSlot();
+    FeatureSlotProcessor(mapper::Device&, foleys::MagicProcessorState&, Band, vector<Real>&, int);
+    ~FeatureSlotProcessor();
 
     void initialiseAlgorithm(String algoStr);
-    void attachToParameter(const String& value, AudioProcessorValueTreeState& vts);
+
+    Value& getOutputValue();
 
     void compute();
-
-    void paint (Graphics&) override;
-    void resized() override;
 
     void setBand(Band band);
     Band getBand();
 
-    void valueChanged (Value &value) override;
-    void setInputAudioBuffer(shared_ptr<vector<Real>> audioBuffer);
-    void setSlotNumber(int number);
-
 private:
     // State management
     foleys::MagicProcessorState& magicState;
+    String paramID = "";
+
+    std::mutex mutex;
+
+    String currentAlgoString = "";
 
     // The input buffer for this slot
-    shared_ptr<vector<Real>> inputAudioBuffer;
+    const vector<Real>& inputAudioBuffer;
     // Will contain the output if the output is a scalar value
     Real outputScalar = -1.0f;
     Value outputValue;
@@ -58,6 +57,7 @@ private:
 
     // The algorithm for this slot
     unique_ptr<Algorithm> algorithm;
+    atomic<bool> isAlgorithmChanging = ATOMIC_VAR_INIT(false);
 
     // Reference to the main libmapper device
     mapper::Device& libmapperDevice;
@@ -67,10 +67,9 @@ private:
 
     int slotNumber = -1;
 
-    // Display stuff
-    unique_ptr<foleys::AttachableComboBox> algorithmComboBox;
-    unique_ptr<Label> valueLabel;
+    void parameterChanged(const String& parameterID, float newValue) override;
+
 };
 
 
-#endif //MUSIC_VIS_BACKEND_FEATURESLOT_H
+#endif //MUSIC_VIS_BACKEND_FEATURESLOTPROCESSOR_H
