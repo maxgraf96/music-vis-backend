@@ -33,6 +33,6 @@ void FeatureSlotGUI::paint(Graphics &) {
 
 void FeatureSlotGUI::resized() {
     // Position elements
-    algorithmComboBox->setBounds(0, 0, getParentWidth() * 0.9, 40);
-    valueLabel->setBounds(0, 50, getParentWidth() * 0.9, 20);
+    algorithmComboBox->setBounds(0, 0, getParentWidth() * 0.9, 30);
+    valueLabel->setBounds(0, 35, getParentWidth() * 0.9, 20);
 }

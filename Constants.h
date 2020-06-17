@@ -15,4 +15,7 @@ static juce::StringArray featureSlotAlgorithmOptions = {"Loudness", "Spectral Ce
 // Number of feature slots per band
 const int NUMBER_OF_SLOTS = 2;
 
+// Number of automatables
+const int NUMBER_OF_AUTOMATABLES = 5;
+
 #endif //MUSIC_VIS_BACKEND_CONSTANTS_H

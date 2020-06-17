@@ -76,6 +76,7 @@ private:
     atomic<float>* paramLowSolo = nullptr;
     atomic<float>* paramMidSolo = nullptr;
     atomic<float>* paramHighSolo = nullptr;
+    vector<atomic<float>*> autoParams;
 
     // NB: The cutoff frequencies for the mid-band are calculated from the high- and low band filters respectively
     // Main filters: 2 for lowpass, 2 for highpass
@@ -133,6 +134,7 @@ private:
     unique_ptr<mapper::Signal> sensorSpectrum;
     unique_ptr<mapper::Signal> sensorPitchYIN;
     unique_ptr<mapper::Signal> sensorLoudness;
+    vector<unique_ptr<mapper::Signal>> sensorsAutomatables;
 
     // Feature slots
     vector<unique_ptr<FeatureSlotProcessor>> lowBandSlots;

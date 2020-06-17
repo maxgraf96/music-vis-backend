@@ -89,6 +89,42 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                                    featureSlotAlgorithmOptions,
                                    0
                            ),
+                           // Automatables
+                           make_unique<AudioParameterFloat>(
+                                   "auto1",
+                                   "Automatable 1",
+                                   0.0f,
+                                   1.0f,
+                                   0.0f
+                                   ),
+                           make_unique<AudioParameterFloat>(
+                                   "auto2",
+                                   "Automatable 2",
+                                   0.0f,
+                                   1.0f,
+                                   0.0f
+                           ),
+                           make_unique<AudioParameterFloat>(
+                                   "auto3",
+                                   "Automatable 3",
+                                   0.0f,
+                                   1.0f,
+                                   0.0f
+                           ),
+                           make_unique<AudioParameterFloat>(
+                                   "auto4",
+                                   "Automatable 4",
+                                   0.0f,
+                                   1.0f,
+                                   0.0f
+                           ),
+                           make_unique<AudioParameterFloat>(
+                                   "auto5",
+                                   "Automatable 5",
+                                   0.0f,
+                                   1.0f,
+                                   0.0f
+                           )
                          })
 {
     // Initialise listeners for parameters
@@ -106,6 +142,13 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
     paramLowSolo = magicState.getValueTreeState().getRawParameterValue("lowSolo");
     paramMidSolo = magicState.getValueTreeState().getRawParameterValue("midSolo");
     paramHighSolo = magicState.getValueTreeState().getRawParameterValue("highSolo");
+    for (int i = 0; i < NUMBER_OF_AUTOMATABLES; i++){
+        string name = "auto";
+        name.append(to_string(i + 1));
+        autoParams.emplace_back(magicState.getValueTreeState().getRawParameterValue(name));
+        // Add parameter listener
+        magicState.getValueTreeState().addParameterListener(name, this);
+    }
 
     // Initialise essentia
     essentia::init();
@@ -116,15 +159,23 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
     sensorSpectrum = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("spectrum", 128, 'f', 0, 0, 0));
     sensorPitchYIN = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("pitchYIN", 1, 'f', 0, 0, 0));
     sensorLoudness = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("loudness", 1, 'f', 0, 0, 0));
+    // Setup automatables in libmapper
+    for (int i = 0; i < NUMBER_OF_AUTOMATABLES; i++){
+        string name = "Automatable_";
+        name.append(to_string(i + 1));
+        sensorsAutomatables.emplace_back(make_unique<mapper::Signal>(libmapperDevice->add_output_signal(name, 1, 'f', 0, 0, 0)));
+    }
 
     // Start timer for GUI updates
     startTimer(100);
 
     lowBandSlots.clear();
+    midBandSlots.clear();
     highBandSlots.clear();
 
     for (int i = 0; i < NUMBER_OF_SLOTS; i++){
         lowBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::LOW, eLowAudioBuffer, i + 1));
+        midBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::MID, eMidAudioBuffer, i + 1));
         highBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::HIGH, eHighAudioBuffer, i + 1));
     }
 }
@@ -167,6 +218,11 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     sensorSpectrum->update(eSpectrumData);
     sensorPitchYIN->update(ePitchYIN);
     sensorLoudness->update(eLoudness);
+
+//    // Update automatables
+//    for (int autoIdx = 0; autoIdx < NUMBER_OF_AUTOMATABLES; autoIdx++){
+//        sensorsAutomatables[autoIdx]->update(autoParams[autoIdx]);
+//    }
 
     // Additional multiband processing (if more than 1 band is seleted)
     if(*paramNumberOfBands > 0.0f){
@@ -302,10 +358,12 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     highBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
 
     lowBandSlots.clear();
+    midBandSlots.clear();
     highBandSlots.clear();
 
     for (int i = 0; i < NUMBER_OF_SLOTS; i++){
         lowBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::LOW, eLowAudioBuffer, i + 1));
+        midBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::MID, eMidAudioBuffer, i + 1));
         highBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::HIGH, eHighAudioBuffer, i + 1));
     }
 }
@@ -322,6 +380,14 @@ AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
     magicState.getValueTreeState().removeParameterListener("lowSolo", this);
     magicState.getValueTreeState().removeParameterListener("midSolo", this);
     magicState.getValueTreeState().removeParameterListener("highSolo", this);
+
+    for (int i = 0; i < NUMBER_OF_AUTOMATABLES; i++){
+        string name = "auto";
+        name.append(to_string(i + 1));
+        magicState.getValueTreeState().removeParameterListener(name, this);
+    }
+
+    autoParams.clear();
 
     // Shutdown essentia
     essentia::shutdown();
@@ -512,6 +578,10 @@ void AudioPluginAudioProcessor::parameterChanged(const String &parameterID, floa
             }
         }
     }
+    if(parameterID.contains("auto")){
+        int idx = parameterID.toStdString().back() - '0' - 1;
+        sensorsAutomatables[idx]->update(newValue);
+    }
 }
 
 array<dsp::IIR::Filter<float>, 2> &AudioPluginAudioProcessor::getLowpassFilters() {
@@ -553,7 +623,7 @@ void AudioPluginAudioProcessor::registerFeatureSlotGUI(foleys::MagicGUIBuilder& 
                                                  if(valStr.contains("low")) {
                                                      featureSlot->registerValue(lowBandSlots[slotNo - 1]->getOutputValue());
                                                  } else if(valStr.contains("mid")){
-
+                                                     featureSlot->registerValue(midBandSlots[slotNo - 1]->getOutputValue());
                                                  } else if(valStr.contains("high")){
                                                      featureSlot->registerValue(highBandSlots[slotNo - 1]->getOutputValue());
                                                  }
