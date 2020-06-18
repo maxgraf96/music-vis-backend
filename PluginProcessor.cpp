@@ -1,4 +1,6 @@
 #include "PluginProcessor.h"
+
+#include <memory>
 #include "PluginEditor.h"
 
 //==============================================================================
@@ -154,17 +156,7 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
     essentia::init();
 
     // Setup libmapper
-    libmapperDevice = make_unique<mapper::Device>("test");
-    sensorSpectralCentroid = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("spectralCentroid", 1, 'f', nullptr, nullptr, nullptr));
-    sensorSpectrum = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("spectrum", 128, 'f', 0, 0, 0));
-    sensorPitchYIN = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("pitchYIN", 1, 'f', 0, 0, 0));
-    sensorLoudness = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("loudness", 1, 'f', 0, 0, 0));
-    // Setup automatables in libmapper
-    for (int i = 0; i < NUMBER_OF_AUTOMATABLES; i++){
-        string name = "Automatable_";
-        name.append(to_string(i + 1));
-        sensorsAutomatables.emplace_back(make_unique<mapper::Signal>(libmapperDevice->add_output_signal(name, 1, 'f', 0, 0, 0)));
-    }
+    libmapperSetup("music-vis-backend-libmapper");
 
     // Start timer for GUI updates
     startTimer(100);
@@ -644,6 +636,26 @@ void AudioPluginAudioProcessor::timerCallback() {
     magicState.getPropertyAsValue(PITCH_YIN_ID.toString()).setValue(roundToInt(pitchValue));
     // Display current loudness
     magicState.getPropertyAsValue(LOUDNESS_ID.toString()).setValue(roundToInt(eLoudness));
+}
+
+void AudioPluginAudioProcessor::updateTrackProperties(const AudioProcessor::TrackProperties &properties) {
+    AudioProcessor::updateTrackProperties(properties);
+
+    libmapperSetup(properties.name.toStdString());
+}
+
+void AudioPluginAudioProcessor::libmapperSetup(const string& deviceName) {
+    libmapperDevice = make_unique<mapper::Device>(deviceName);
+    sensorSpectralCentroid = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("spectralCentroid", 1, 'f', nullptr, nullptr, nullptr));
+    sensorSpectrum = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("spectrum", 128, 'f', 0, 0, 0));
+    sensorPitchYIN = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("pitchYIN", 1, 'f', 0, 0, 0));
+    sensorLoudness = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("loudness", 1, 'f', 0, 0, 0));
+    // Setup automatables in libmapper
+    for (int i = 0; i < NUMBER_OF_AUTOMATABLES; i++){
+        string name = "Automatable_";
+        name.append(to_string(i + 1));
+        sensorsAutomatables.emplace_back(make_unique<mapper::Signal>(libmapperDevice->add_output_signal(name, 1, 'f', 0, 0, 0)));
+    }
 }
 
 //==============================================================================

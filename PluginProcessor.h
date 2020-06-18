@@ -56,6 +56,9 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    // Pick up changes to the track at which the plugin is located
+    void updateTrackProperties(const TrackProperties& properties) override;
+
     vector<Real>& getSpectrumData();
     Real& getSpectralCentroid();
 
@@ -129,6 +132,7 @@ private:
     unique_ptr<Algorithm> aLoudness;
 
     // Libmapper stuff
+    void libmapperSetup(const string& deviceName);
     unique_ptr<mapper::Device> libmapperDevice;
     unique_ptr<mapper::Signal> sensorSpectralCentroid;
     unique_ptr<mapper::Signal> sensorSpectrum;
