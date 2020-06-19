@@ -196,25 +196,24 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         eGlobalAudioBuffer.push_back(reader[i]);
     }
 
+    // Essentia algorithms compute routines
     aWindowing->compute();
     aSpectrum->compute();
     aSpectralCentroid->compute();
     aPitchYIN->compute();
     aLoudness->compute();
+    aOnsetDetection->compute();
 
     // Poll libmapper device
     libmapperDevice->poll();
 
-    // Send spectral centroid to libmapper
+    // Send data centroid to libmapper
     sensorSpectralCentroid->update(eSpectralCentroid);
     sensorSpectrum->update(eSpectrumData);
     sensorPitchYIN->update(ePitchYIN);
     sensorLoudness->update(eLoudness);
+    sensorOnsetDetection->update(eOnsetDetection);
 
-//    // Update automatables
-//    for (int autoIdx = 0; autoIdx < NUMBER_OF_AUTOMATABLES; autoIdx++){
-//        sensorsAutomatables[autoIdx]->update(autoParams[autoIdx]);
-//    }
 
     // Additional multiband processing (if more than 1 band is seleted)
     if(*paramNumberOfBands > 0.0f){
@@ -324,6 +323,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     aSpectralCentroid.reset(factory.create("SpectralCentroidTime", "sampleRate", sampleRate));
     aPitchYIN.reset(factory.create("PitchYin", "sampleRate", sampleRate, "frameSize", samplesPerBlock));
     aLoudness.reset(factory.create("Loudness"));
+    aOnsetDetection.reset(factory.create("OnsetDetection", "method", "hfc", "sampleRate", sampleRate));
 
     // Connect algorithms
     aWindowing->input("frame").set(eGlobalAudioBuffer);
@@ -343,6 +343,14 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     // Loudness
     aLoudness->input("signal").set(eGlobalAudioBuffer);
     aLoudness->output("loudness").set(eLoudness);
+
+    // Onset detection
+    // Dummy phase vector necessary as essentia algorithms must be initialised with all fields set to something
+    // Phase would only be used in the complex ODF, so we can dummy the data here
+    vector<Real> dummyPhase;
+    aOnsetDetection->input("spectrum").set(eSpectrumData);
+    aOnsetDetection->input("phase").set(dummyPhase);
+    aOnsetDetection->output("onsetDetection").set(eOnsetDetection);
 
     // Setup band buffers
     lowBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
@@ -650,6 +658,8 @@ void AudioPluginAudioProcessor::libmapperSetup(const string& deviceName) {
     sensorSpectrum = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("spectrum", 128, 'f', 0, 0, 0));
     sensorPitchYIN = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("pitchYIN", 1, 'f', 0, 0, 0));
     sensorLoudness = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("loudness", 1, 'f', 0, 0, 0));
+    sensorOnsetDetection = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("onsetDetection", 1, 'f', 0, 0, 0));
+
     // Setup automatables in libmapper
     for (int i = 0; i < NUMBER_OF_AUTOMATABLES; i++){
         string name = "Automatable_";

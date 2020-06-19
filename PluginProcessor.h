@@ -122,6 +122,7 @@ private:
     Real ePitchYIN = 0.0f;
     Real ePitchConfidence = 0.0f;
     Real eLoudness = 0.0f;
+    Real eOnsetDetection = 0.0f;
 
     // Essentia algorithms are marked by an "a" prefix
     unique_ptr<Algorithm> aWindowing;
@@ -130,14 +131,17 @@ private:
     unique_ptr<Algorithm> aSpectralCentroid;
     unique_ptr<Algorithm> aPitchYIN;
     unique_ptr<Algorithm> aLoudness;
+    unique_ptr<Algorithm> aOnsetDetection;
 
     // Libmapper stuff
+    // Initialise the libmapper device and its global signals
     void libmapperSetup(const string& deviceName);
     unique_ptr<mapper::Device> libmapperDevice;
     unique_ptr<mapper::Signal> sensorSpectralCentroid;
     unique_ptr<mapper::Signal> sensorSpectrum;
     unique_ptr<mapper::Signal> sensorPitchYIN;
     unique_ptr<mapper::Signal> sensorLoudness;
+    unique_ptr<mapper::Signal> sensorOnsetDetection;
     vector<unique_ptr<mapper::Signal>> sensorsAutomatables;
 
     // Feature slots
