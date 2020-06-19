@@ -1,0 +1,3 @@
+[submodule "foleys_gui_magic"]
+	path = foleys_gui_magic
+	url = https://github.com/maxgraf96/foleys_gui_magic.git
