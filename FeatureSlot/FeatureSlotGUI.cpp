@@ -6,7 +6,7 @@
 
 FeatureSlotGUI::FeatureSlotGUI(foleys::MagicProcessorState& ms)
 : magicState(ms) {
-    algorithmComboBox = make_unique<foleys::AttachableComboBox>();
+    algorithmComboBox = make_unique<ComboBox>();
     valueLabel = make_unique<Label>("displayValue", "");
 
     // Add to parent
@@ -21,10 +21,18 @@ void FeatureSlotGUI::registerValue(Value& value){
 }
 
 void FeatureSlotGUI::attachToParameter(const String& value, AudioProcessorValueTreeState& vts){
-    algorithmComboBox->attachToParameter (value, vts);
+    attachment.reset();
+    if(value.isNotEmpty()){
+        if(auto* parameter = magicState.getParameter(value)){
+            algorithmComboBox->clear();
+            algorithmComboBox->addItemList(featureSlotAlgorithmOptions, 1);
+            attachment = magicState.createAttachment(value, *algorithmComboBox);
+        }
+    }
 }
 
 FeatureSlotGUI::~FeatureSlotGUI(){
+    attachment.reset();
 }
 
 void FeatureSlotGUI::paint(Graphics &) {

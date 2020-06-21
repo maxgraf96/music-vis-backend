@@ -91,7 +91,7 @@ find_library(
 # that will be built into the target. This is a standard CMake command.
 
 target_sources(music-vis-backend PRIVATE
-        PluginEditor.cpp
+        # PluginEditor.cpp
         PluginProcessor.cpp
         Utility.cpp
         jucefiltergraph/FilterInfo.cpp
@@ -99,6 +99,8 @@ target_sources(music-vis-backend PRIVATE
         foleys_gui_magic/foleys_gui_magic.cpp
         FeatureSlot/FeatureSlotProcessor.cpp
         FeatureSlot/FeatureSlotGUI.cpp
+        GUIItems/FilterGraphGUIItem.cpp
+        GUIItems/FeatureSlotGUIItem.cpp
         )
 
 # `target_compile_definitions` adds some preprocessor definitions to our target. In a Projucer

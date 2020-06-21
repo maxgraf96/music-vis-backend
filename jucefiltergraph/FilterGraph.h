@@ -7,13 +7,12 @@
 
   ==============================================================================
 */
-
+#pragma once
 #ifndef FILTER_GRAPH_H
 #define FILTER_GRAPH_H
 
 #include "FilterInfo.h"
-#include "../Utility.h"
-#include "../PluginProcessor.h"
+
 
 using namespace std;
 
@@ -23,7 +22,11 @@ class FilterGraph    : public Component,
     private AudioProcessorValueTreeState::Listener, ChangeBroadcaster, ChangeListener
 {
 public:
-    FilterGraph(AudioPluginAudioProcessor&, AudioProcessorValueTreeState&, TooltipWindow&);
+    FilterGraph(array<dsp::IIR::Filter<float>, 2>& lowpassFilters,
+            array<dsp::IIR::Filter<float>, 2>& highpassFilters,
+            double sampleRate,
+            AudioProcessorValueTreeState&,
+            TooltipWindow&);
     ~FilterGraph();
     
     enum TraceType

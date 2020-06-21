@@ -10,18 +10,22 @@
 
 #include "FilterGraph.h"
 
-FilterGraph::FilterGraph(AudioPluginAudioProcessor& p, AudioProcessorValueTreeState& valueTreeState, TooltipWindow& tooltip)
+FilterGraph::FilterGraph(array<dsp::IIR::Filter<float>, 2>& lowpassFilters,
+        array<dsp::IIR::Filter<float>, 2>& highpassFilters,
+        double sampleRate,
+        AudioProcessorValueTreeState& valueTreeState,
+        TooltipWindow& tooltip)
     :tooltip(tooltip), vts(valueTreeState)
 {
     // Construct filter vector from low- and highpass filters from processor
-    filterVector.emplace_back(FilterInfo(p.getLowpassFilters(), FilterInfo::LOWPASS, p.getSampleRate(), valueTreeState));
-    filterVector.emplace_back(FilterInfo(p.getHighpassFilters(), FilterInfo::HIGHPASS, p.getSampleRate(), valueTreeState));
+    filterVector.emplace_back(FilterInfo(lowpassFilters, FilterInfo::LOWPASS, sampleRate, valueTreeState));
+    filterVector.emplace_back(FilterInfo(highpassFilters, FilterInfo::HIGHPASS, sampleRate, valueTreeState));
 
     numHorizontalLines = 7;
 	// Hard limit frequency region for now
     lowFreq = 20;
     highFreq = 20000;
-    fs = p.getSampleRate();
+    fs = sampleRate;
     maxdB = 6;
     maxPhas = 1;
     numFilters = 2;

@@ -1,8 +1,5 @@
 #include "PluginProcessor.h"
 
-#include <memory>
-#include "PluginEditor.h"
-
 //==============================================================================
 AudioPluginAudioProcessor::AudioPluginAudioProcessor()
      : AudioProcessor (BusesProperties()
@@ -493,15 +490,16 @@ bool AudioPluginAudioProcessor::hasEditor() const
 juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
 {
     // MAGIC GUI: we create our custom builder instance here, that will be available for all factories we add
-    auto builder = std::make_unique<foleys::MagicGUIBuilder>(&magicState);
+    auto builder = std::make_unique<foleys::MagicGUIBuilder>(magicState);
     builder->registerJUCEFactories();
+    builder->registerFactory("FilterGraph", FilterGraphGUIItem::factory);
+    builder->registerFactory("FeatureSlot", FeatureSlotGUIItem::factory);
 
-    registerFilterGraph(*builder, this);
-    registerFeatureSlotGUI(*builder, this);
     magicState.setLastEditorSize(1200, 1024);
 
+    tooltip = make_unique<TooltipWindow>(this->getActiveEditor(), 100);
+
     return new foleys::MagicPluginEditor(magicState, BinaryData::musicvisbackend_xml, BinaryData::musicvisbackend_xmlSize, std::move(builder));
-//    return new foleys::MagicPluginEditor (magicState, MyBinaryData::getMagicXML(), MyBinaryData::getMagicXMLSize(), std::move (builder));
 }
 
 //==============================================================================
@@ -592,50 +590,6 @@ array<dsp::IIR::Filter<float>, 2> &AudioPluginAudioProcessor::getHighpassFilters
     return highpassFilters;
 }
 
-void AudioPluginAudioProcessor::registerFilterGraph(foleys::MagicGUIBuilder& builder, AudioPluginAudioProcessor* processor) {
-    tooltip = make_unique<TooltipWindow>(this->getActiveEditor(), 100);
-
-    builder.registerFactory ("FilterGraph", [processor](const ValueTree&)
-    {
-        return make_unique<FilterGraph>(*processor, processor->magicState.getValueTreeState(), *processor->tooltip);
-    });
-}
-
-void AudioPluginAudioProcessor::registerFeatureSlotGUI(foleys::MagicGUIBuilder& builder, AudioPluginAudioProcessor* processor) {
-    builder.registerFactory ("FeatureSlot", [processor](const ValueTree&)
-    {
-        return make_unique<FeatureSlotGUI>(processor->magicState);
-    });
-    // Add settable properties
-    builder.addSettableProperty ("FeatureSlot",
-                                std::make_unique<foleys::SettableChoiceProperty>
-                                        (foleys::IDs::featureSlotParameter,
-                                         [&] (juce::Component* component, juce::var value, const juce::NamedValueSet&)
-                                         {
-                                             if (auto* featureSlot = dynamic_cast<FeatureSlotGUI*>(component)){
-                                                 String valStr = value.toString();
-
-                                                 // Get current slot number
-                                                 char slot = valStr.toStdString().back();
-                                                 int slotNo = slot - '0';
-
-                                                 // Add feature slots to vector for access in processor
-                                                 if(valStr.contains("low")) {
-                                                     featureSlot->registerValue(lowBandSlots[slotNo - 1]->getOutputValue());
-                                                 } else if(valStr.contains("mid")){
-                                                     featureSlot->registerValue(midBandSlots[slotNo - 1]->getOutputValue());
-                                                 } else if(valStr.contains("high")){
-                                                     featureSlot->registerValue(highBandSlots[slotNo - 1]->getOutputValue());
-                                                 }
-
-                                                 // Attach to value last
-                                                 featureSlot->attachToParameter(valStr, magicState.getValueTreeState());
-                                             }
-                                         },
-                                         juce::String(),
-                                         foleys::SettableProperty::Parameter));
-}
-
 void AudioPluginAudioProcessor::timerCallback() {
     // Display current spectral centroid
     magicState.getPropertyAsValue(SPECTRAL_CENTROID_ID.toString()).setValue(roundToInt(eSpectralCentroid));
@@ -644,6 +598,7 @@ void AudioPluginAudioProcessor::timerCallback() {
     magicState.getPropertyAsValue(PITCH_YIN_ID.toString()).setValue(roundToInt(pitchValue));
     // Display current loudness
     magicState.getPropertyAsValue(LOUDNESS_ID.toString()).setValue(roundToInt(eLoudness));
+    magicState.getPropertyAsValue(ODF_ID.toString()).setValue(eOnsetDetection);
 }
 
 void AudioPluginAudioProcessor::updateTrackProperties(const AudioProcessor::TrackProperties &properties) {
@@ -666,6 +621,26 @@ void AudioPluginAudioProcessor::libmapperSetup(const string& deviceName) {
         name.append(to_string(i + 1));
         sensorsAutomatables.emplace_back(make_unique<mapper::Signal>(libmapperDevice->add_output_signal(name, 1, 'f', 0, 0, 0)));
     }
+}
+
+TooltipWindow &AudioPluginAudioProcessor::getTooltipWindow() {
+    return *tooltip;
+}
+
+foleys::MagicProcessorState& AudioPluginAudioProcessor::getMagicState() {
+    return magicState;
+}
+
+vector<unique_ptr<FeatureSlotProcessor>> &AudioPluginAudioProcessor::getLowBandSlots() {
+    return lowBandSlots;
+}
+
+vector<unique_ptr<FeatureSlotProcessor>> &AudioPluginAudioProcessor::getMidBandSlots() {
+    return midBandSlots;
+}
+
+vector<unique_ptr<FeatureSlotProcessor>> &AudioPluginAudioProcessor::getHighBandSlots() {
+    return highBandSlots;
 }
 
 //==============================================================================

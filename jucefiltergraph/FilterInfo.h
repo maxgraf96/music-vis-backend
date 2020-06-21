@@ -8,11 +8,12 @@
 
   ==============================================================================
 */
+#pragma once
 #ifndef FILTER_INFO_H
 #define FILTER_INFO_H
 
 #include <juce_dsp/juce_dsp.h>
-#include "../PluginProcessor.h"
+#include <juce_audio_processors/juce_audio_processors.h>
 #include "../Constants.h"
 #include <complex>
 #include <vector>

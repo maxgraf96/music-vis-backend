@@ -1,11 +1,12 @@
 //
 // Created by Max on 16/06/2020.
 //
-
+#pragma once
 #ifndef MUSIC_VIS_BACKEND_FEATURESLOTGUI_H
 #define MUSIC_VIS_BACKEND_FEATURESLOTGUI_H
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "../foleys_gui_magic/foleys_gui_magic.h"
+#include "../Constants.h"
 
 using namespace std;
 using namespace juce;
@@ -25,7 +26,8 @@ private:
     foleys::MagicProcessorState& magicState;
 
     // Display stuff
-    unique_ptr<foleys::AttachableComboBox> algorithmComboBox;
+    unique_ptr<ComboBox> algorithmComboBox;
+    unique_ptr<AudioProcessorValueTreeState::ComboBoxAttachment> attachment;
     unique_ptr<Label> valueLabel;
 };
 

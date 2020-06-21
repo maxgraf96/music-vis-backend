@@ -29,7 +29,7 @@ FeatureSlotProcessor::~FeatureSlotProcessor() {
 }
 
 void FeatureSlotProcessor::compute() {
-    if(!isAlgorithmChanging.load()){
+    if(algorithm != nullptr && !isAlgorithmChanging.load()){
         algorithm->compute();
         // Update output value for label
         float val = (int)(outputScalar * 100 + .5);
@@ -50,6 +50,9 @@ void FeatureSlotProcessor::setBand(Band band){
 
 void FeatureSlotProcessor::initialiseAlgorithm(String algoStr) {
     // Big switcharoo for algorithm initialisation
+    if(algoStr == "-"){
+        algorithm.reset();
+    }
     if(algoStr == "Loudness"){
         algorithm.reset(factory.create("Loudness"));
         algorithm->input("signal").set(inputAudioBuffer);
@@ -85,8 +88,10 @@ void FeatureSlotProcessor::parameterChanged(const String &parameterID, float new
         isAlgorithmChanging.store(true);
         outputValue = 0;
 
-        algorithm->reset();
-        algorithm.reset();
+        if(algorithm != nullptr){
+            algorithm->reset();
+            algorithm.reset();
+        }
         // Convert choice index to int
         int idx = static_cast<int>(newValue) + 1;
         // If no item is selected don't initialise an algorithm

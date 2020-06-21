@@ -1,5 +1,8 @@
 #pragma once
+#ifndef AUDIOPLUGIN_PROCESSOR_H
+#define AUDIOPLUGIN_PROCESSOR_H
 
+#include <memory>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 #include <essentia/algorithmfactory.h>
@@ -10,6 +13,8 @@
 #include "BinaryData.h"
 #include "FeatureSlot/FeatureSlotProcessor.h"
 #include "FeatureSlot/FeatureSlotGUI.h"
+#include "GUIItems/FilterGraphGUIItem.h"
+#include "GUIItems/FeatureSlotGUIItem.h"
 
 using namespace juce;
 using namespace std;
@@ -66,6 +71,16 @@ public:
     array<dsp::IIR::Filter<float>, 2>& getLowpassFilters();
     array<dsp::IIR::Filter<float>, 2>& getHighpassFilters();
 
+    // Getter for tooltip
+    TooltipWindow& getTooltipWindow();
+    // Getter for magicState
+    foleys::MagicProcessorState& getMagicState();
+
+    // Getters for sub band slot processors
+    vector<unique_ptr<FeatureSlotProcessor>>& getLowBandSlots();
+    vector<unique_ptr<FeatureSlotProcessor>>& getMidBandSlots();
+    vector<unique_ptr<FeatureSlotProcessor>>& getHighBandSlots();
+
 private:
     // State management
     AudioProcessorValueTreeState valueTreeState;
@@ -96,14 +111,11 @@ private:
 
     // PluginGUIMagic stuff
     foleys::MagicProcessorState magicState { *this, valueTreeState };
-    // filtergraph component registration
-    void registerFilterGraph(foleys::MagicGUIBuilder& builder, AudioPluginAudioProcessor* processor);
-    void registerFeatureSlotGUI(foleys::MagicGUIBuilder &builder, AudioPluginAudioProcessor *processor);
 
     Label* spectralCentroidLabel;
 
     // Necessary for enabling tooltips
-    std::unique_ptr<TooltipWindow> tooltip;
+    unique_ptr<TooltipWindow> tooltip;
 
     // Values estimated by Essentia are marked with an "e" prefix
     // Will contain copy of the global JUCE audio buffer (not subdivided into bands)
@@ -167,4 +179,5 @@ static Identifier MID_MAX_WIDTH_ID = "midMaxWidth";
 static Identifier MULTIBAND_ENABLED_ID = "multiBandEnabled";
 static Identifier MIDBAND_ENABLED_ID = "midBandEnabled";
 static Identifier LOUDNESS_ID = "loudnessValue";
-
+static Identifier ODF_ID = "onsetDetectionValue";
+#endif
