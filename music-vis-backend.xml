@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<magic>
+  <Styles>
+    <Style name="default">
+      <Nodes/>
+      <Classes>
+        <plot-view border="2" background-color="black" border-color="silver" display="contents"/>
+        <nomargin margin="0" padding="0" border="0"/>
+        <group margin="5" padding="5" border="2" flex-direction="column"/>
+      </Classes>
+      <Types>
+        <Slider border="0" slider-textbox="textbox-below"/>
+        <ToggleButton border="0" max-height="50" caption-size="0" text="Active"/>
+        <TextButton border="0" max-height="50" caption-size="0"/>
+        <ComboBox border="0" max-height="50" caption-size="0"/>
+        <Plot border="0" margin="0" padding="0" background-color="00000000"
+              radius="0"/>
+        <XYDragComponent border="0" margin="0" padding="0" background-color="00000000"
+                         radius="0"/>
+      </Types>
+    </Style>
+  </Styles>
+  <View id="root" resizable="0" resize-corner="1" width="1200" height="1024"
+        flex-direction="column" flex-align-self="stretch" repaint-hz="30">
+    <Label text="music-vis-backend" font-size="24" height="" max-height="48"
+           id="header"/>
+    <View caption="Globals" caption-placement="top-left" border="1" id="globalsContainer"
+          flex-direction="row" flex-align-content="stretch" flex-align-items="stretch"
+          flex-justify-content="start" max-height="200" flex-grow="0.2"
+          padding="12">
+      <View flex-direction="column" margin="0" padding="0">
+        <View max-height="55" padding="0">
+          <Label text="Loudness:" max-width="140" id="loudnessHeader"/>
+          <Label id="loudnessLabel" value="loudnessValue"/>
+        </View>
+        <View flex-direction="row" id="pitchGroup" max-height="55" padding="0">
+          <Label text="Pitch (YIN):" justification="top-left" id="pitchHeader"
+                 max-width="140"/>
+          <Label id="pitchYinLabel" font-size="16" text="" value="pitchYINValue"/>
+        </View>
+        <View flex-direction="row" id="spectralCentroidGroup" max-height="55"
+              flex-align-content="stretch" padding="0" margin="">
+          <Label text="Spectral centroid:" justification="centred-left" id="spectralCentroidHeader"
+                 max-width="140" font-size="16" width="140"/>
+          <Label id="spectralCentroidLabel" font-size="16" class="" label-text=""
+                 value="spectralCentroidValue"/>
+        </View>
+      </View>
+      <View margin="0" padding="0" flex-direction="column">
+        <View margin="0" padding="0">
+          <Label text="Onset Detection" max-width="140"/>
+          <Label value="onsetDetectionValue"/>
+        </View>
+        <View margin="0" padding="0">
+          <Label text=""/>
+          <Label/>
+        </View>
+        <View margin="0" padding="0">
+          <Label text=""/>
+          <Label/>
+        </View>
+      </View>
+    </View>
+    <View id="bandContainer" flex-align-self="stretch" flex-grow="0.5"
+          flex-justify-content="" flex-align-items="" flex-align-content="stretch"
+          border="1" padding="12" caption="Sub Bands" caption-placement="top-left">
+      <ComboBox caption="Number of Bands" parameter="numberOfBands" max-width="140"
+                max-height="80" id="cbNumberOfBands"/>
+      <View flex-direction="column" id="filterGraphContainer" flex-align-content="stretch"
+            flex-align-items="start" display="flexbox" flex-wrap="nowrap"
+            flex-grow="1.0" flex-align-self="stretch" enabled="multiBandEnabled"
+            max-height="550">
+        <View id="bands" max-height="400">
+          <View flex-direction="column" id="lowBand" caption="Low" max-height="380">
+            <View max-height="60" margin="0" padding="0">
+              <Label text="Solo" justification="centred-left" width="" max-width="80"/>
+              <ToggleButton text="" id="toggleLowSolo" parameter="lowSolo" flex-align-self="stretch"/>
+            </View>
+            <View margin="0" padding="0" max-height="100">
+              <Label text="Cutoff" justification="centred-left" max-width="80"/>
+              <Slider parameter="lowpassCutoff" slider-type="rotary" slider-textbox="textbox-below"
+                      id="lowCutoffSlider" max-height="140" caption-placement="centred-left"
+                      caption-color="FFFFFFFF" flex-align-self="stretch" margin="0"
+                      padding="0"/>
+            </View>
+            <View max-height="100" margin="0" padding="0" height="">
+              <Label text="Slot 1" max-width="80"/>
+              <FeatureSlot featureSlotParameter="lowSlot1" id="fSLow1" max-height="100"
+                           padding="0"/>
+            </View>
+            <View max-height="100" margin="0" padding="0">
+              <Label text="Slot 2" max-width="80"/>
+              <FeatureSlot featureSlotParameter="lowSlot2" padding="0"/>
+            </View>
+          </View>
+          <View flex-direction="column" id="midBand" caption="Mid" enabled="midBandEnabled"
+                max-height="380">
+            <View max-height="60">
+              <Label text="Solo" justification="centred-left"/>
+              <ToggleButton text="" caption-placement="centred-left" caption="" id="toggleMidSolo"
+                            parameter="midSolo"/>
+            </View>
+            <View/>
+            <View max-height="100" margin="0" padding="0" height="">
+              <Label text="Slot 1" max-width="80"/>
+              <FeatureSlot featureSlotParameter="midSlot1" id="fsMid1" max-height="100"
+                           padding="0"/>
+            </View>
+            <View max-height="100" margin="0" padding="0" height="">
+              <Label text="Slot 2" max-width="80"/>
+              <FeatureSlot featureSlotParameter="midSlot2" id="fsMid2" max-height="100"
+                           padding="0"/>
+            </View>
+          </View>
+          <View flex-direction="column" id="highBand" caption="High" max-height="380">
+            <View max-height="60" margin="0" padding="0">
+              <Label text="Solo" justification="centred-left"/>
+              <ToggleButton text="" caption="" id="toggleHighSolo" parameter="highSolo"/>
+            </View>
+            <View margin="0" padding="0" max-height="100">
+              <Label text="Cutoff" justification="centred-left"/>
+              <Slider parameter="highpassCutoff" slider-type="rotary" slider-textbox="textbox-below"
+                      id="highCutoffSlider" max-height="140" caption-placement="centred-left"
+                      caption-color="FFFFFFFF" margin="0" padding="0"/>
+            </View>
+            <View max-height="100" margin="0" padding="0">
+              <Label text="Slot 1" max-width="80"/>
+              <FeatureSlot featureSlotParameter="highSlot1" padding="0"/>
+            </View>
+            <View max-height="100" margin="0" padding="0">
+              <Label text="Slot 2" max-width="80"/>
+              <FeatureSlot featureSlotParameter="highSlot2" padding="0"/>
+            </View>
+          </View>
+        </View>
+        <FilterGraph id="filterGraph" max-height="140"/>
+      </View>
+    </View>
+    <View flex-grow="0.2" caption="Automatables" caption-placement="top-left"
+          margin="5" padding="12" border="1" id="automatablesContainer">
+      <View flex-grow="0.2" flex-shrink="1.0">
+        <View flex-direction="column">
+          <Label text="1" justification="centred" margin="0" padding="0" flex-grow="0.2"/>
+          <Slider slider-type="rotary" slider-textbox="textbox-below" margin="0"
+                  padding="0" parameter="auto1"/>
+        </View>
+      </View>
+      <View flex-grow="0.2" flex-shrink="1.0">
+        <View flex-direction="column">
+          <Label text="2" justification="centred" flex-grow="0.2" margin="0" padding="0"/>
+          <Slider slider-type="rotary" slider-textbox="textbox-below" margin="0"
+                  padding="0" parameter="auto2"/>
+        </View>
+      </View>
+      <View flex-grow="0.2" flex-shrink="1.0">
+        <View flex-direction="column">
+          <Label text="3" justification="centred" margin="0" padding="0" flex-grow="0.2"/>
+          <Slider slider-type="rotary" slider-textbox="textbox-below" margin="0"
+                  padding="0" parameter="auto3"/>
+        </View>
+      </View>
+      <View flex-grow="0.2" flex-shrink="1.0">
+        <View flex-direction="column">
+          <Label text="4" justification="centred" margin="0" padding="0" flex-grow="0.2"/>
+          <Slider slider-type="rotary" slider-textbox="textbox-below" margin="0"
+                  padding="0" parameter="auto4"/>
+        </View>
+      </View>
+      <View flex-grow="0.2" flex-shrink="1.0">
+        <View flex-direction="column">
+          <Label text="5" justification="centred" margin="0" padding="0" flex-grow="0.2"/>
+          <Slider slider-type="rotary" slider-textbox="textbox-below" margin="0"
+                  padding="0" parameter="auto5"/>
+        </View>
+      </View>
+    </View>
+  </View>
+</magic>
+ 

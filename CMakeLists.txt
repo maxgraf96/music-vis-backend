@@ -124,7 +124,7 @@ target_compile_definitions(music-vis-backend
 
 juce_add_binary_data(AudioPluginData
         SOURCES
-        foleys_gui_magic/music-vis-backend.xml
+        music-vis-backend.xml
         )
 
 set_target_properties(
@@ -139,13 +139,13 @@ set_target_properties(
 
 # Copy the magicXML file to the executable directories
 # Debug
-configure_file(foleys_gui_magic/music-vis-backend.xml music-vis-backend_artefacts/Debug/Standalone/music-vis-backend.app/Contents/MacOS/music-vis-backend.xml COPYONLY)
-configure_file(foleys_gui_magic/music-vis-backend.xml music-vis-backend_artefacts/Debug/AU/music-vis-backend.component/Contents/MacOS/music-vis-backend.xml COPYONLY)
-configure_file(foleys_gui_magic/music-vis-backend.xml music-vis-backend_artefacts/Debug/VST3/music-vis-backend.vst3/Contents/MacOS/music-vis-backend.xml COPYONLY)
+configure_file(music-vis-backend.xml music-vis-backend_artefacts/Debug/Standalone/music-vis-backend.app/Contents/MacOS/music-vis-backend.xml COPYONLY)
+configure_file(music-vis-backend.xml music-vis-backend_artefacts/Debug/AU/music-vis-backend.component/Contents/MacOS/music-vis-backend.xml COPYONLY)
+configure_file(music-vis-backend.xml music-vis-backend_artefacts/Debug/VST3/music-vis-backend.vst3/Contents/MacOS/music-vis-backend.xml COPYONLY)
 # Release
-configure_file(foleys_gui_magic/music-vis-backend.xml music-vis-backend_artefacts/Release/Standalone/music-vis-backend.app/Contents/MacOS/music-vis-backend.xml COPYONLY)
-configure_file(foleys_gui_magic/music-vis-backend.xml music-vis-backend_artefacts/Release/AU/music-vis-backend.component/Contents/MacOS/music-vis-backend.xml COPYONLY)
-configure_file(foleys_gui_magic/music-vis-backend.xml music-vis-backend_artefacts/Release/VST3/music-vis-backend.vst3/Contents/MacOS/music-vis-backend.xml COPYONLY)
+configure_file(music-vis-backend.xml music-vis-backend_artefacts/Release/Standalone/music-vis-backend.app/Contents/MacOS/music-vis-backend.xml COPYONLY)
+configure_file(music-vis-backend.xml music-vis-backend_artefacts/Release/AU/music-vis-backend.component/Contents/MacOS/music-vis-backend.xml COPYONLY)
+configure_file(music-vis-backend.xml music-vis-backend_artefacts/Release/VST3/music-vis-backend.vst3/Contents/MacOS/music-vis-backend.xml COPYONLY)
 
 
 target_link_libraries(music-vis-backend PRIVATE
