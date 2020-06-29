@@ -29,34 +29,33 @@
           flex-direction="row" flex-align-content="stretch" flex-align-items="stretch"
           flex-justify-content="start" max-height="200" flex-grow="0.2"
           padding="12">
-      <View flex-direction="column" margin="0" padding="0">
-        <View max-height="55" padding="0">
+      <View flex-direction="column" margin="0" padding="0" id="firstColumn">
+        <View max-height="55" padding="0" id="loudnessGroup">
           <Label text="Loudness:" max-width="140" id="loudnessHeader" font-size="16"
                  margin="0" padding="0"/>
-          <Label id="loudnessLabel" value="loudnessValue" font-size="16"/>
+          <Label id="loudnessLabel" value=":loudnessValue" font-size="16"/>
         </View>
         <View flex-direction="row" id="pitchGroup" max-height="55" padding="0">
-          <Label text="Pitch (YIN):" justification="top-left" id="pitchHeader"
-                 max-width="140" font-size="16" margin="" padding=""/>
-          <Label id="pitchYinLabel" font-size="16" value="pitchYINValue" padding=""
-                 margin=""/>
+          <Label text="Pitch (YIN):" id="pitchHeader" max-width="140" font-size="16"
+                 margin="0" padding="0"/>
+          <Label text="" id="pitchYinLabel" font-size="16" value=":pitchYINValue"/>
         </View>
         <View flex-direction="row" id="spectralCentroidGroup" max-height="55"
               flex-align-content="stretch" padding="0" margin="">
           <Label text="Spectral centroid:" justification="centred-left" id="spectralCentroidHeader"
                  max-width="140" font-size="16" width="140"/>
           <Label id="spectralCentroidLabel" font-size="16" class="" label-text=""
-                 value="spectralCentroidValue"/>
+                 value=":spectralCentroidValue"/>
         </View>
       </View>
       <View margin="0" padding="0" flex-direction="column">
         <View margin="0" padding="0">
-          <Label text="Onset Detection" max-width="140" font-size="16"/>
-          <Label value="onsetDetectionValue" font-size="16"/>
+          <Label text="Onset Detection:" max-width="140" font-size="16"/>
+          <Label value=":onsetDetectionValue" font-size="16"/>
         </View>
         <View margin="0" padding="0">
-          <Label text=""/>
-          <Label/>
+          <Label text="Chord:" font-size="16" max-width="140"/>
+          <Label value=":strongestChordValue" font-size="16"/>
         </View>
         <View margin="0" padding="0">
           <Label text=""/>

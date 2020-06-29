@@ -135,6 +135,14 @@ private:
     Real ePitchConfidence = 0.0f;
     Real eLoudness = 0.0f;
     Real eOnsetDetection = 0.0f;
+    vector<Real> eSpectralPeaksFrequencies; // in Hz
+    vector<Real> eSpectralPeaksMagnitudes;
+    vector<Real> eHPCP; // Default size := 12
+    vector<vector<Real>> eChordDetectionInput;
+    vector<string> eChords;
+    vector<Real> eChordsStrengths;
+    string eStrongestChord; // for displaying the best candidate in chord detection
+
 
     // Essentia algorithms are marked by an "a" prefix
     unique_ptr<Algorithm> aWindowing;
@@ -144,6 +152,9 @@ private:
     unique_ptr<Algorithm> aPitchYIN;
     unique_ptr<Algorithm> aLoudness;
     unique_ptr<Algorithm> aOnsetDetection;
+    unique_ptr<Algorithm> aSpectralPeaks;
+    unique_ptr<Algorithm> aHPCP; // Harmonic Pitch Class Profile
+    unique_ptr<Algorithm> aChordsDetection;
 
     // Libmapper stuff
     // Initialise the libmapper device and its global signals
@@ -180,4 +191,5 @@ static Identifier MULTIBAND_ENABLED_ID = "multiBandEnabled";
 static Identifier MIDBAND_ENABLED_ID = "midBandEnabled";
 static Identifier LOUDNESS_ID = "loudnessValue";
 static Identifier ODF_ID = "onsetDetectionValue";
+static Identifier STRONGEST_CHORD_ID = "strongestChordValue";
 #endif

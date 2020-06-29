@@ -156,7 +156,7 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
     libmapperSetup("music-vis-backend-libmapper");
 
     // Start timer for GUI updates
-    startTimer(100);
+    startTimer(10);
 
     lowBandSlots.clear();
     midBandSlots.clear();
@@ -200,6 +200,20 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     aPitchYIN->compute();
     aLoudness->compute();
     aOnsetDetection->compute();
+    aSpectralPeaks->compute();
+    aHPCP->compute();
+
+    eChordDetectionInput.clear();
+    eChordDetectionInput.emplace_back(eHPCP);
+    aChordsDetection->compute();
+
+    int strongestChordIdx = std::distance(eChordsStrengths.begin(), std::max_element(eChordsStrengths.begin(), eChordsStrengths.end()));
+    eStrongestChord = eChords[strongestChordIdx];
+
+    if(eChordsStrengths.size() > 10){
+        eChords.clear();
+        eChordsStrengths.clear();
+    }
 
     // Poll libmapper device
     libmapperDevice->poll();
@@ -314,6 +328,8 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
     // Create algorithms
     standard::AlgorithmFactory& factory = standard::AlgorithmFactory::instance();
+    streaming::AlgorithmFactory& streamingFactory = streaming::AlgorithmFactory::instance();
+
     aWindowing.reset(factory.create("Windowing", "type", "blackmanharris62"));
     aSpectrum.reset(factory.create("Spectrum"));
     aMFCC.reset(factory.create("MFCC"));
@@ -321,6 +337,9 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     aPitchYIN.reset(factory.create("PitchYin", "sampleRate", sampleRate, "frameSize", samplesPerBlock));
     aLoudness.reset(factory.create("Loudness"));
     aOnsetDetection.reset(factory.create("OnsetDetection", "method", "hfc", "sampleRate", sampleRate));
+    aSpectralPeaks.reset(factory.create("SpectralPeaks", "sampleRate", sampleRate));
+    aHPCP.reset(factory.create("HPCP", "sampleRate", sampleRate));
+    aChordsDetection.reset(factory.create("ChordsDetection", "sampleRate", sampleRate));
 
     // Connect algorithms
     aWindowing->input("frame").set(eGlobalAudioBuffer);
@@ -348,6 +367,21 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     aOnsetDetection->input("spectrum").set(eSpectrumData);
     aOnsetDetection->input("phase").set(dummyPhase);
     aOnsetDetection->output("onsetDetection").set(eOnsetDetection);
+
+    // Spectral peaks
+    aSpectralPeaks->input("spectrum").set(eSpectrumData);
+    aSpectralPeaks->output("frequencies").set(eSpectralPeaksFrequencies);
+    aSpectralPeaks->output("magnitudes").set(eSpectralPeaksMagnitudes);
+
+    // Harmonic Pitch Class Profile
+    aHPCP->input("frequencies").set(eSpectralPeaksFrequencies);
+    aHPCP->input("magnitudes").set(eSpectralPeaksMagnitudes);
+    aHPCP->output("hpcp").set(eHPCP);
+
+    // Chord detection
+    aChordsDetection->input("pcp").set(eChordDetectionInput);
+    aChordsDetection->output("chords").set(eChords);
+    aChordsDetection->output("strength").set(eChordsStrengths);
 
     // Setup band buffers
     lowBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
@@ -565,7 +599,7 @@ void AudioPluginAudioProcessor::parameterChanged(const String &parameterID, floa
         }
     }
     if(parameterID == "numberOfBands"){
-        magicState.getPropertyAsValue(MULTIBAND_ENABLED_ID.toString()).setValue(newValue > 0.0f);
+        magicState.getPropertyAsValue(MULTIBAND_ENABLED_ID.toString()).setValue(newValue - 1);// > 0.0f);
         magicState.getPropertyAsValue(MIDBAND_ENABLED_ID.toString()).setValue(newValue == 2.0f);
 
         // If 2 bands are selected snap highpass cutoff value to lowpass cutoff value
@@ -599,6 +633,8 @@ void AudioPluginAudioProcessor::timerCallback() {
     // Display current loudness
     magicState.getPropertyAsValue(LOUDNESS_ID.toString()).setValue(roundToInt(eLoudness));
     magicState.getPropertyAsValue(ODF_ID.toString()).setValue(eOnsetDetection);
+    var strongestChord = var(eStrongestChord);
+    magicState.getPropertyAsValue(STRONGEST_CHORD_ID.toString()).setValue(strongestChord);
 }
 
 void AudioPluginAudioProcessor::updateTrackProperties(const AudioProcessor::TrackProperties &properties) {
@@ -614,6 +650,7 @@ void AudioPluginAudioProcessor::libmapperSetup(const string& deviceName) {
     sensorPitchYIN = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("pitchYIN", 1, 'f', 0, 0, 0));
     sensorLoudness = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("loudness", 1, 'f', 0, 0, 0));
     sensorOnsetDetection = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("onsetDetection", 1, 'f', 0, 0, 0));
+    auto test = libmapperDevice->add_signal_group();
 
     // Setup automatables in libmapper
     for (int i = 0; i < NUMBER_OF_AUTOMATABLES; i++){
