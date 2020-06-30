@@ -155,9 +155,6 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
     // Setup libmapper
     libmapperSetup("music-vis-backend-libmapper");
 
-    // Start timer for GUI updates
-    startTimer(10);
-
     lowBandSlots.clear();
     midBandSlots.clear();
     highBandSlots.clear();
@@ -175,6 +172,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
+    auto numSamples = buffer.getNumSamples();
 
     // In case we have more outputs than inputs, this code clears any output
     // channels that didn't contain input data, (because these aren't
@@ -202,17 +200,19 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     aOnsetDetection->compute();
     aSpectralPeaks->compute();
     aHPCP->compute();
+    aDissonance->compute();
 
-    eChordDetectionInput.clear();
     eChordDetectionInput.emplace_back(eHPCP);
-    aChordsDetection->compute();
 
-    int strongestChordIdx = std::distance(eChordsStrengths.begin(), std::max_element(eChordsStrengths.begin(), eChordsStrengths.end()));
-    eStrongestChord = eChords[strongestChordIdx];
+    if(eChordDetectionInput.size() > 2){
+        aChordsDetection->compute();
 
-    if(eChordsStrengths.size() > 10){
+        int strongestChordIdx = std::distance(eChordsStrengths.begin(), std::max_element(eChordsStrengths.begin(), eChordsStrengths.end()));
+        eStrongestChord = eChords[strongestChordIdx];
+
         eChords.clear();
         eChordsStrengths.clear();
+        eChordDetectionInput.clear();
     }
 
     // Poll libmapper device
@@ -224,6 +224,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     sensorPitchYIN->update(ePitchYIN);
     sensorLoudness->update(eLoudness);
     sensorOnsetDetection->update(eOnsetDetection);
+    sensorDissonance->update(eDissonance);
 
 
     // Additional multiband processing (if more than 1 band is seleted)
@@ -338,8 +339,9 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     aLoudness.reset(factory.create("Loudness"));
     aOnsetDetection.reset(factory.create("OnsetDetection", "method", "hfc", "sampleRate", sampleRate));
     aSpectralPeaks.reset(factory.create("SpectralPeaks", "sampleRate", sampleRate));
-    aHPCP.reset(factory.create("HPCP", "sampleRate", sampleRate));
-    aChordsDetection.reset(factory.create("ChordsDetection", "sampleRate", sampleRate));
+    aHPCP.reset(factory.create("HPCP", "sampleRate", sampleRate, "nonLinear", true));
+    aChordsDetection.reset(factory.create("ChordsDetection", "sampleRate", sampleRate, "windowSize", 1));
+    aDissonance.reset(factory.create("Dissonance"));
 
     // Connect algorithms
     aWindowing->input("frame").set(eGlobalAudioBuffer);
@@ -383,6 +385,10 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     aChordsDetection->output("chords").set(eChords);
     aChordsDetection->output("strength").set(eChordsStrengths);
 
+    aDissonance->input("frequencies").set(eSpectralPeaksFrequencies);
+    aDissonance->input("magnitudes").set(eSpectralPeaksMagnitudes);
+    aDissonance->output("dissonance").set(eDissonance);
+
     // Setup band buffers
     lowBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
     midBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
@@ -397,6 +403,10 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
         midBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::MID, eMidAudioBuffer, i + 1));
         highBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::HIGH, eHighAudioBuffer, i + 1));
     }
+
+    // Start timer for GUI updates
+    stopTimer();
+    startTimer(static_cast<int>((samplesPerBlock / sampleRate) * 1000));
 }
 
 bool AudioPluginAudioProcessor::noSolo() {
@@ -635,6 +645,7 @@ void AudioPluginAudioProcessor::timerCallback() {
     magicState.getPropertyAsValue(ODF_ID.toString()).setValue(eOnsetDetection);
     var strongestChord = var(eStrongestChord);
     magicState.getPropertyAsValue(STRONGEST_CHORD_ID.toString()).setValue(strongestChord);
+    magicState.getPropertyAsValue(DISSONANCE_ID.toString()).setValue(eDissonance);
 }
 
 void AudioPluginAudioProcessor::updateTrackProperties(const AudioProcessor::TrackProperties &properties) {
@@ -650,6 +661,7 @@ void AudioPluginAudioProcessor::libmapperSetup(const string& deviceName) {
     sensorPitchYIN = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("pitchYIN", 1, 'f', 0, 0, 0));
     sensorLoudness = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("loudness", 1, 'f', 0, 0, 0));
     sensorOnsetDetection = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("onsetDetection", 1, 'f', 0, 0, 0));
+    sensorDissonance = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("dissonance", 1, 'f', 0, 0, 0));
     auto test = libmapperDevice->add_signal_group();
 
     // Setup automatables in libmapper

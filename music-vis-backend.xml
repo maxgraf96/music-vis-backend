@@ -58,8 +58,8 @@
           <Label value=":strongestChordValue" font-size="16"/>
         </View>
         <View margin="0" padding="0">
-          <Label text=""/>
-          <Label/>
+          <Label text="Dissonance:" max-width="140" font-size="16"/>
+          <Label value=":dissonance" font-size="16"/>
         </View>
       </View>
     </View>

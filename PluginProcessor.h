@@ -142,6 +142,7 @@ private:
     vector<string> eChords;
     vector<Real> eChordsStrengths;
     string eStrongestChord; // for displaying the best candidate in chord detection
+    Real eDissonance;
 
 
     // Essentia algorithms are marked by an "a" prefix
@@ -155,6 +156,7 @@ private:
     unique_ptr<Algorithm> aSpectralPeaks;
     unique_ptr<Algorithm> aHPCP; // Harmonic Pitch Class Profile
     unique_ptr<Algorithm> aChordsDetection;
+    unique_ptr<Algorithm> aDissonance; // Outputs sensory dissonance on a scale from 0 (consonant) to 1 (dissonant)
 
     // Libmapper stuff
     // Initialise the libmapper device and its global signals
@@ -165,6 +167,7 @@ private:
     unique_ptr<mapper::Signal> sensorPitchYIN;
     unique_ptr<mapper::Signal> sensorLoudness;
     unique_ptr<mapper::Signal> sensorOnsetDetection;
+    unique_ptr<mapper::Signal> sensorDissonance;
     vector<unique_ptr<mapper::Signal>> sensorsAutomatables;
 
     // Feature slots
@@ -192,4 +195,5 @@ static Identifier MIDBAND_ENABLED_ID = "midBandEnabled";
 static Identifier LOUDNESS_ID = "loudnessValue";
 static Identifier ODF_ID = "onsetDetectionValue";
 static Identifier STRONGEST_CHORD_ID = "strongestChordValue";
+static Identifier DISSONANCE_ID = "dissonance";
 #endif
