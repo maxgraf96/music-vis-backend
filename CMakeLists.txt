@@ -56,26 +56,52 @@ juce_add_plugin(music-vis-backend
     PRODUCT_NAME "music-vis-backend")           # The name of the final executable, which can differ from the target name
 
 include_directories(
-        "/usr/local/include" "/usr/local/include/eigen3"
+        "/usr/local/include" # needed for libmapper
+        "external_libraries/fftw/3.3.8_1/include"
+        "external_libraries/essentia/include"
+        # Apparently eigen is included in the static essentia build
+        # "/usr/local/include/eigen3"
+        # "external_libraries/eigen/3.3.7/include"
 )
 
+# For linking to included versions (making deployment eaaasy)
 find_library(
         ESSENTIA
         NAMES libessentia.a
-        HINTS "/usr/local/lib"
+        PATHS external_libraries/essentia/lib
+        HINTS "external_libraries/essentia/lib"
 )
 
 find_library(
         FFTW3
         NAMES libfftw3.a
-        HINTS "/usr/local/lib"
+        HINTS "external_libraries/fftw/3.3.8_1/lib"
 )
 
 find_library(
         FFTW3F
         NAMES libfftw3f.a
-        HINTS "/usr/local/lib"
+        HINTS "external_libraries/fftw/3.3.8_1/lib"
 )
+
+# For linking to brew installed versions
+#find_library(
+#        ESSENTIA
+#        NAMES libessentia.a
+#        HINTS "/usr/local/lib"
+#)
+
+#find_library(
+#        FFTW3
+#        NAMES libfftw3.a
+#        HINTS "/usr/local/lib"
+#)
+#
+#find_library(
+#        FFTW3F
+#        NAMES libfftw3f.a
+#        HINTS "/usr/local/lib"
+#)
 
 # `juce_generate_juce_header` will create a JuceHeader.h for a given target, which will be generated
 # into your build tree. This should be included with `#include <JuceHeader.h>`. The include path for
@@ -149,13 +175,22 @@ configure_file(music-vis-backend.xml music-vis-backend_artefacts/Release/Standal
 configure_file(music-vis-backend.xml music-vis-backend_artefacts/Release/AU/music-vis-backend.component/Contents/MacOS/music-vis-backend.xml COPYONLY)
 configure_file(music-vis-backend.xml music-vis-backend_artefacts/Release/VST3/music-vis-backend.vst3/Contents/MacOS/music-vis-backend.xml COPYONLY)
 
+# Set relative paths for static libs
+set(ESSENTIA_PATH "${CMAKE_CURRENT_SOURCE_DIR}/external_libraries/essentia/lib")
+set(FFTW3_PATH "${CMAKE_CURRENT_SOURCE_DIR}/external_libraries/fftw/3.3.8_1/lib")
 
 target_link_libraries(music-vis-backend PRIVATE
         AudioPluginData           # If we'd created a binary data target, we'd link to it here
         juce::juce_audio_utils
         juce::juce_dsp
-        essentia -L/usr/local/lib
-        fftw3 -L/usr/lib/x86_64-linux-gnu
-        fftw3f -L/usr/lib/x86_64-linux-gnu
+        # Statically linked libs
+        essentia -L${ESSENTIA_PATH}
+        fftw3 -L${FFTW3_PATH}
+        fftw3f -L${FFTW3_PATH}
+
+        # Includes for when packages are installed via brew (hard to deploy then)
+        # essentia -L/usr/local/lib
+        # fftw3 -L/usr/lib/x86_64-linux-gnu
+        # fftw3f -L/usr/lib/x86_64-linux-gnu
         mapper -L/usr/local/lib
         )

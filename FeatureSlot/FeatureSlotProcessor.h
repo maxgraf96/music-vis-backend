@@ -6,7 +6,7 @@
 #define MUSIC_VIS_BACKEND_FEATURESLOTPROCESSOR_H
 
 #include <juce_audio_processors/juce_audio_processors.h>
-#include <essentia/algorithmfactory.h>
+#include "../external_libraries/essentia/include/algorithmfactory.h"
 #include <mapper/mapper_cpp.h>
 #include "../foleys_gui_magic/foleys_gui_magic.h"
 #include "../Constants.h"

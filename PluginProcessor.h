@@ -5,8 +5,7 @@
 #include <memory>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
-#include <essentia/algorithmfactory.h>
-#include <essentia/pool.h>
+#include "external_libraries/essentia/include/algorithmfactory.h"
 #include "Utility.h"
 #include <mapper/mapper_cpp.h>
 #include "foleys_gui_magic/foleys_gui_magic.h"
