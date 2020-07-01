@@ -188,7 +188,7 @@ target_link_libraries(music-vis-backend PRIVATE
         fftw3 -L${FFTW3_PATH}
         fftw3f -L${FFTW3_PATH}
 
-        # Includes for when packages are installed via brew (hard to deploy then)
+        # Includes for when packages are installed via brew (deploy is more complicated then)
         # essentia -L/usr/local/lib
         # fftw3 -L/usr/lib/x86_64-linux-gnu
         # fftw3f -L/usr/lib/x86_64-linux-gnu

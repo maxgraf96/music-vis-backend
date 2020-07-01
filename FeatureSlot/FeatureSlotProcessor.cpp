@@ -33,7 +33,7 @@ void FeatureSlotProcessor::compute() {
         algorithm->compute();
         // Update output value for label
         float val = (int)(outputScalar * 100 + .5);
-        outputValue = (float) (val / 100);
+        outputValue.setValue((float) (val / 100));
 
         libmapperDevice.poll();
         sensor->update((float) (val / 100));
@@ -51,7 +51,7 @@ void FeatureSlotProcessor::setBand(Band band){
 void FeatureSlotProcessor::initialiseAlgorithm(String algoStr) {
     // Big switcharoo for algorithm initialisation
     if(algoStr == "-"){
-        algorithm.reset();
+        algorithm.reset(nullptr);
     }
     if(algoStr == "Loudness"){
         algorithm.reset(factory.create("Loudness"));
@@ -64,19 +64,11 @@ void FeatureSlotProcessor::initialiseAlgorithm(String algoStr) {
         algorithm->output("centroid").set(outputScalar);
     }
 
-    // Initialise libmapper sensor
-    // Remove previous signal from libmapper
-    if(sensor != nullptr){
-        //libmapperDevice.remove_signal(*sensor);
-    }
     // Add new signal
     std::string signalName = band == LOW ? "Low" : band == MID ? "Mid" : "High";
     signalName.append("_Slot_").append(to_string(slotNumber)); //.append(":").append(algoStr.toStdString());
     // Remove any whitespaces from string, as libmapper doesn't support spaces in signal names :(((
     signalName.erase (std::remove (signalName.begin(), signalName.end(), ' '), signalName.end());
-
-//    sensor = make_unique<mapper::Signal>(libmapperDevice.add_output_signal(signalName, 1, 'f', 0, 0, 0));
-    isAlgorithmChanging.store(false);
 }
 
 Value &FeatureSlotProcessor::getOutputValue() {
@@ -86,11 +78,11 @@ Value &FeatureSlotProcessor::getOutputValue() {
 void FeatureSlotProcessor::parameterChanged(const String &parameterID, float newValue) {
     if(parameterID == paramID){
         isAlgorithmChanging.store(true);
-        outputValue = 0;
+        outputValue.setValue(0);
 
         if(algorithm != nullptr){
             algorithm->reset();
-            algorithm.reset();
+            algorithm.reset(nullptr);
         }
         // Convert choice index to int
         int idx = static_cast<int>(newValue) + 1;
@@ -106,5 +98,7 @@ void FeatureSlotProcessor::parameterChanged(const String &parameterID, float new
             currentAlgoString = algoName;
             initialiseAlgorithm(algoName);
         }
+
+        isAlgorithmChanging.store(false);
     }
 }

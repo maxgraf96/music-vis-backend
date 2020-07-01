@@ -154,16 +154,6 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
 
     // Setup libmapper
     libmapperSetup("music-vis-backend-libmapper");
-
-    lowBandSlots.clear();
-    midBandSlots.clear();
-    highBandSlots.clear();
-
-    for (int i = 0; i < NUMBER_OF_SLOTS; i++){
-        lowBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::LOW, eLowAudioBuffer, i + 1));
-        midBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::MID, eMidAudioBuffer, i + 1));
-        highBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::HIGH, eHighAudioBuffer, i + 1));
-    }
 }
 
 void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
@@ -393,16 +383,6 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     lowBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
     midBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
     highBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
-
-    lowBandSlots.clear();
-    midBandSlots.clear();
-    highBandSlots.clear();
-
-    for (int i = 0; i < NUMBER_OF_SLOTS; i++){
-        lowBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::LOW, eLowAudioBuffer, i + 1));
-        midBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::MID, eMidAudioBuffer, i + 1));
-        highBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::HIGH, eHighAudioBuffer, i + 1));
-    }
 
     // Start timer for GUI updates
     stopTimer();
@@ -651,7 +631,8 @@ void AudioPluginAudioProcessor::timerCallback() {
 void AudioPluginAudioProcessor::updateTrackProperties(const AudioProcessor::TrackProperties &properties) {
     AudioProcessor::updateTrackProperties(properties);
 
-    libmapperSetup(properties.name.toStdString());
+    // skip for the while
+    // libmapperSetup(properties.name.toStdString());
 }
 
 void AudioPluginAudioProcessor::libmapperSetup(const string& deviceName) {
@@ -663,6 +644,17 @@ void AudioPluginAudioProcessor::libmapperSetup(const string& deviceName) {
     sensorOnsetDetection = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("onsetDetection", 1, 'f', 0, 0, 0));
     sensorDissonance = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("dissonance", 1, 'f', 0, 0, 0));
     auto test = libmapperDevice->add_signal_group();
+
+    // Clear slots before setting up libmapper
+    lowBandSlots.clear();
+    midBandSlots.clear();
+    highBandSlots.clear();
+
+    for (int i = 0; i < NUMBER_OF_SLOTS; i++){
+        lowBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::LOW, eLowAudioBuffer, i + 1));
+        midBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::MID, eMidAudioBuffer, i + 1));
+        highBandSlots.emplace_back(make_unique<FeatureSlotProcessor>(*libmapperDevice, magicState, FeatureSlotProcessor::HIGH, eHighAudioBuffer, i + 1));
+    }
 
     // Setup automatables in libmapper
     for (int i = 0; i < NUMBER_OF_AUTOMATABLES; i++){

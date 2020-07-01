@@ -186,8 +186,8 @@ void FilterGraph::mouseDrag(const MouseEvent& event)
     
     // Get x position for cutoff frequency
     int xPos = lastMousePosRel.getX();
-    if (xPos < 0) xPos = 0;
-    if (xPos > getWidth()) xPos = getWidth();
+    if (xPos < 0) xPos = 3;
+    if (xPos > getWidth()) xPos = getWidth() - 1;
 
     // Convert from coordinates to values
     const float freq = xToFreq(xPos);
@@ -226,9 +226,9 @@ void FilterGraph::mouseUp(const MouseEvent& event) {
 
 void FilterGraph::updateFilter(int filter, float cutoff) {
     if (filter == 0){
-        lowpassCutoff = cutoff;
+        lowpassCutoff.setValue(cutoff);
     } else {
-        highpassCutoff = cutoff;
+        highpassCutoff.setValue(cutoff);
     }
 }
 
