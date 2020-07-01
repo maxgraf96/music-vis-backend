@@ -1,6 +1,8 @@
 # music-vis-backend
 
-## Installation - Use (macOS only at the moment)
+*Note: Only macOS is supported at the moment.*
+
+## Installation - Use
 1. Install Apple Developer Tools
 2. Get current release (todo add link)
 3. Navigate to the release folder in terminal, run `./install_dependencies.sh`. That will install [liblo](http://liblo.sourceforge.net/) as well as [libmapper](https://libmapper.github.io/) to your machine (specifically, to `/usr/local/include` and `/usr/local/lib`)
