@@ -23,7 +23,6 @@ project(music-vis-backend VERSION 0.0.1 LANGUAGES CXX)
 list(APPEND CMAKE_PREFIX_PATH "~/IJUCE")
 
 find_package(JUCE CONFIG REQUIRED)
-#find_package(~/IJUCE)        # If you've installed JUCE to your system
 # or
 # add_subdirectory(JUCE)                # If you've put JUCE in a subdirectory called JUCE
 
@@ -165,7 +164,7 @@ configure_file(music-vis-backend.xml music-vis-backend_artefacts/Release/VST3/mu
 # Set relative paths for static libs
 set(ESSENTIA_PATH "${CMAKE_CURRENT_SOURCE_DIR}/external_libraries/essentia/lib")
 
-target_link_libraries(music-vis-backend PRIV ATE
+target_link_libraries(music-vis-backend PRIVATE
         AudioPluginData           # If we'd created a binary data target, we'd link to it here
         juce::juce_audio_utils
         juce::juce_dsp
