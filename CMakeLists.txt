@@ -56,8 +56,7 @@ juce_add_plugin(music-vis-backend
     PRODUCT_NAME "music-vis-backend")           # The name of the final executable, which can differ from the target name
 
 include_directories(
-        "/usr/local/include" # needed for libmapper
-        "external_libraries/fftw/3.3.8_1/include"
+        "/usr/local/include" # needed for libmapper and fftw
         "external_libraries/essentia/include"
         # Apparently eigen is included in the static essentia build
         # "/usr/local/include/eigen3"
@@ -72,18 +71,6 @@ find_library(
         HINTS "external_libraries/essentia/lib"
 )
 
-find_library(
-        FFTW3
-        NAMES libfftw3.a
-        HINTS "external_libraries/fftw/3.3.8_1/lib"
-)
-
-find_library(
-        FFTW3F
-        NAMES libfftw3f.a
-        HINTS "external_libraries/fftw/3.3.8_1/lib"
-)
-
 # For linking to brew installed versions
 #find_library(
 #        ESSENTIA
@@ -91,17 +78,17 @@ find_library(
 #        HINTS "/usr/local/lib"
 #)
 
-#find_library(
-#        FFTW3
-#        NAMES libfftw3.a
-#        HINTS "/usr/local/lib"
-#)
-#
-#find_library(
-#        FFTW3F
-#        NAMES libfftw3f.a
-#        HINTS "/usr/local/lib"
-#)
+find_library(
+        FFTW3
+        NAMES libfftw3.a
+        HINTS "/usr/local/lib"
+)
+
+find_library(
+        FFTW3F
+        NAMES libfftw3f.a
+        HINTS "/usr/local/lib"
+)
 
 # `juce_generate_juce_header` will create a JuceHeader.h for a given target, which will be generated
 # into your build tree. This should be included with `#include <JuceHeader.h>`. The include path for
@@ -177,20 +164,17 @@ configure_file(music-vis-backend.xml music-vis-backend_artefacts/Release/VST3/mu
 
 # Set relative paths for static libs
 set(ESSENTIA_PATH "${CMAKE_CURRENT_SOURCE_DIR}/external_libraries/essentia/lib")
-set(FFTW3_PATH "${CMAKE_CURRENT_SOURCE_DIR}/external_libraries/fftw/3.3.8_1/lib")
 
-target_link_libraries(music-vis-backend PRIVATE
+target_link_libraries(music-vis-backend PRIV ATE
         AudioPluginData           # If we'd created a binary data target, we'd link to it here
         juce::juce_audio_utils
         juce::juce_dsp
-        # Statically linked libs
+        # Statically linked essentia
         essentia -L${ESSENTIA_PATH}
-        fftw3 -L${FFTW3_PATH}
-        fftw3f -L${FFTW3_PATH}
 
         # Includes for when packages are installed via brew (deploy is more complicated then)
         # essentia -L/usr/local/lib
-        # fftw3 -L/usr/lib/x86_64-linux-gnu
-        # fftw3f -L/usr/lib/x86_64-linux-gnu
+         fftw3 -L/usr/local/lib
+         fftw3f -L/usr/local/lib
         mapper -L/usr/local/lib
         )
