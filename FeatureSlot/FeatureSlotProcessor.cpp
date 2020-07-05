@@ -22,6 +22,7 @@ FeatureSlotProcessor::FeatureSlotProcessor(mapper::Device& libmapperDev, foleys:
     outputValue.referTo(magicState.getPropertyAsValue(val));
 
     sensor = make_unique<mapper::Signal>(libmapperDevice.add_output_signal(algoProp.insert(0, "sub_"), 1, 'f', 0, 0, 0));
+    sensor->set_rate(30);
 }
 
 FeatureSlotProcessor::~FeatureSlotProcessor() {

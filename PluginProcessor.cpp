@@ -643,7 +643,13 @@ void AudioPluginAudioProcessor::libmapperSetup(const string& deviceName) {
     sensorLoudness = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("loudness", 1, 'f', 0, 0, 0));
     sensorOnsetDetection = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("onsetDetection", 1, 'f', 0, 0, 0));
     sensorDissonance = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("dissonance", 1, 'f', 0, 0, 0));
-    auto test = libmapperDevice->add_signal_group();
+
+    sensorSpectralCentroid->set_rate(30);
+    sensorSpectrum->set_rate(30);
+    sensorPitchYIN->set_rate(30);
+    sensorLoudness->set_rate(30);
+    sensorOnsetDetection->set_rate(30);
+    sensorDissonance->set_rate(30);
 
     // Clear slots before setting up libmapper
     lowBandSlots.clear();

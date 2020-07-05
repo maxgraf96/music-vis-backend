@@ -170,9 +170,9 @@ target_link_libraries(music-vis-backend PRIVATE
         juce::juce_dsp
         # Statically linked essentia
         essentia -L${ESSENTIA_PATH}
+        # essentia -L/usr/local/lib (when installing essentia via Homebrew)
 
-        # Includes for when packages are installed via brew (deploy is more complicated then)
-        # essentia -L/usr/local/lib
+        # Dependencies
          fftw3 -L/usr/local/lib
          fftw3f -L/usr/local/lib
         mapper -L/usr/local/lib

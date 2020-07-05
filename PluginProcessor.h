@@ -140,8 +140,8 @@ private:
     vector<vector<Real>> eChordDetectionInput;
     vector<string> eChords;
     vector<Real> eChordsStrengths;
-    string eStrongestChord; // for displaying the best candidate in chord detection
-    Real eDissonance;
+    string eStrongestChord = ""; // for displaying the best candidate in chord detection
+    Real eDissonance = 0.0f;
 
 
     // Essentia algorithms are marked by an "a" prefix
