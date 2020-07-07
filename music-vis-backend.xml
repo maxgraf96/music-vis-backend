@@ -21,7 +21,7 @@
       </Types>
     </Style>
   </Styles>
-  <View id="root" resizable="0" resize-corner="1" width="1200" height="1024"
+  <View id="root" resizable="1" resize-corner="1" width="1200" height="1024"
         flex-direction="column" flex-align-self="stretch" repaint-hz="30">
     <Label text="music-vis-backend" font-size="24" height="" max-height="48"
            id="header"/>
@@ -30,34 +30,36 @@
           flex-justify-content="start" max-height="200" flex-grow="0.2"
           padding="12">
       <View flex-direction="column" margin="0" padding="0" id="firstColumn">
-        <View max-height="55" padding="0" id="loudnessGroup">
+        <View max-height="55" padding="0" id="loudnessGroup" min-height="30">
           <Label text="Loudness:" max-width="140" id="loudnessHeader" font-size="16"
                  margin="0" padding="0"/>
           <Label id="loudnessLabel" value=":loudnessValue" font-size="16"/>
         </View>
-        <View flex-direction="row" id="pitchGroup" max-height="55" padding="0">
+        <View flex-direction="row" id="pitchGroup" max-height="55" padding="0"
+              min-height="30">
           <Label text="Pitch (YIN):" id="pitchHeader" max-width="140" font-size="16"
                  margin="0" padding="0"/>
-          <Label text="" id="pitchYinLabel" font-size="16" value=":pitchYINValue"/>
+          <Label text="" id="pitchYinLabel" font-size="16" value=":pitchYINValue"
+                 min-height="0.0"/>
         </View>
         <View flex-direction="row" id="spectralCentroidGroup" max-height="55"
-              flex-align-content="stretch" padding="0" margin="">
+              flex-align-content="stretch" padding="0" margin="" min-height="30">
           <Label text="Spectral centroid:" justification="centred-left" id="spectralCentroidHeader"
-                 max-width="140" font-size="16" width="140"/>
+                 max-width="140" font-size="16" width=""/>
           <Label id="spectralCentroidLabel" font-size="16" class="" label-text=""
                  value=":spectralCentroidValue"/>
         </View>
       </View>
       <View margin="0" padding="0" flex-direction="column">
-        <View margin="0" padding="0">
+        <View margin="0" padding="0" min-height="30" max-height="55">
           <Label text="Onset Detection:" max-width="140" font-size="16"/>
           <Label value=":onsetDetectionValue" font-size="16"/>
         </View>
-        <View margin="0" padding="0">
+        <View margin="0" padding="0" min-height="30" max-height="55">
           <Label text="Chord:" font-size="16" max-width="140"/>
           <Label value=":strongestChordValue" font-size="16"/>
         </View>
-        <View margin="0" padding="0">
+        <View margin="0" padding="0" min-height="30" max-height="55">
           <Label text="Dissonance:" max-width="140" font-size="16"/>
           <Label value=":dissonance" font-size="16"/>
         </View>
@@ -71,72 +73,74 @@
       <View flex-direction="column" id="filterGraphContainer" flex-align-content="stretch"
             flex-align-items="start" display="flexbox" flex-wrap="nowrap"
             flex-grow="1.0" flex-align-self="stretch" enabled="multiBandEnabled"
-            max-height="550">
-        <View id="bands" max-height="400">
-          <View flex-direction="column" id="lowBand" caption="Low" max-height="380">
+            max-height="550" margin="0" padding="0">
+        <View id="bands" max-height="400" margin="0" padding="0">
+          <View flex-direction="column" id="lowBand" caption="Low" max-height="380"
+                padding="0" margin="0">
             <View max-height="60" margin="0" padding="0">
               <Label text="Solo" justification="centred-left" width="" max-width="80"
                      font-size="16"/>
-              <ToggleButton text="" id="toggleLowSolo" parameter="lowSolo" flex-align-self="stretch"/>
+              <ToggleButton text="" id="toggleLowSolo" parameter="lowSolo" flex-align-self="stretch"
+                            min-height="40" max-height="40"/>
             </View>
             <View margin="0" padding="0" max-height="100">
               <Label text="Cutoff" justification="centred-left" max-width="80" font-size="16"/>
-              <Slider parameter="lowpassCutoff" slider-type="rotary" slider-textbox="textbox-below"
+              <Slider parameter="lowpassCutoff" slider-type="linear-horizontal" slider-textbox="textbox-below"
                       id="lowCutoffSlider" max-height="140" caption-placement="centred-left"
                       caption-color="FFFFFFFF" flex-align-self="stretch" margin="0"
-                      padding="0"/>
+                      padding="0" min-height="0.0"/>
             </View>
-            <View max-height="100" margin="0" padding="0" height="">
+            <View max-height="70" margin="0" padding="0" height="" min-height="60">
               <Label text="Slot 1" max-width="80" font-size="16"/>
-              <FeatureSlot featureSlotParameter="lowSlot1" id="fSLow1" max-height="100"
-                           padding="0"/>
+              <FeatureSlot featureSlotParameter="lowSlot1" id="fSLow1" max-height="60" padding="0"
+                           min-height="60"/>
             </View>
-            <View max-height="100" margin="0" padding="0">
+            <View max-height="70" margin="0" padding="0" min-height="60">
               <Label text="Slot 2" max-width="80" font-size="16"/>
-              <FeatureSlot featureSlotParameter="lowSlot2" padding="0"/>
+              <FeatureSlot featureSlotParameter="lowSlot2" padding="0" min-height="60" max-height="60"/>
             </View>
           </View>
           <View flex-direction="column" id="midBand" caption="Mid" enabled="midBandEnabled"
-                max-height="380">
+                max-height="380" margin="0" padding="0">
             <View max-height="60">
-              <Label text="Solo" justification="centred-left" font-size="16"/>
+              <Label text="Solo" justification="centred-left" font-size="16" max-width="80"/>
               <ToggleButton text="" caption-placement="centred-left" caption="" id="toggleMidSolo"
-                            parameter="midSolo"/>
+                            parameter="midSolo" min-height="40" max-height="40"/>
             </View>
             <View/>
-            <View max-height="100" margin="0" padding="0" height="">
+            <View max-height="70" margin="0" padding="0" height="" min-height="60">
               <Label text="Slot 1" max-width="80" font-size="16"/>
-              <FeatureSlot featureSlotParameter="midSlot1" id="fsMid1" max-height="100"
-                           padding="0"/>
+              <FeatureSlot featureSlotParameter="midSlot1" id="fsMid1" max-height="60" padding="0"/>
             </View>
-            <View max-height="100" margin="0" padding="0" height="">
+            <View max-height="70" margin="0" padding="0" height="" min-height="60">
               <Label text="Slot 2" max-width="80" font-size="16"/>
-              <FeatureSlot featureSlotParameter="midSlot2" id="fsMid2" max-height="100"
-                           padding="0"/>
+              <FeatureSlot featureSlotParameter="midSlot2" id="fsMid2" max-height="60" padding="0"/>
             </View>
           </View>
-          <View flex-direction="column" id="highBand" caption="High" max-height="380">
+          <View flex-direction="column" id="highBand" caption="High" max-height="380"
+                margin="0" padding="0">
             <View max-height="60" margin="0" padding="0">
-              <Label text="Solo" justification="centred-left" font-size="16"/>
-              <ToggleButton text="" caption="" id="toggleHighSolo" parameter="highSolo"/>
+              <Label text="Solo" justification="centred-left" font-size="16" max-width="80"/>
+              <ToggleButton text="" caption="" id="toggleHighSolo" parameter="highSolo" min-height="40"
+                            max-height="40"/>
             </View>
             <View margin="0" padding="0" max-height="100">
-              <Label text="Cutoff" justification="centred-left" font-size="16"/>
-              <Slider parameter="highpassCutoff" slider-type="rotary" slider-textbox="textbox-below"
+              <Label text="Cutoff" justification="centred-left" font-size="16" max-width="80"/>
+              <Slider parameter="highpassCutoff" slider-type="linear-horizontal" slider-textbox="textbox-below"
                       id="highCutoffSlider" max-height="140" caption-placement="centred-left"
                       caption-color="FFFFFFFF" margin="0" padding="0"/>
             </View>
-            <View max-height="100" margin="0" padding="0">
+            <View max-height="70" margin="0" padding="0" min-height="60">
               <Label text="Slot 1" max-width="80" font-size="16"/>
-              <FeatureSlot featureSlotParameter="highSlot1" padding="0"/>
+              <FeatureSlot featureSlotParameter="highSlot1" padding="0" max-height="60"/>
             </View>
-            <View max-height="100" margin="0" padding="0">
+            <View max-height="70" margin="0" padding="0" min-height="60">
               <Label text="Slot 2" max-width="80" font-size="16"/>
-              <FeatureSlot featureSlotParameter="highSlot2" padding="0"/>
+              <FeatureSlot featureSlotParameter="highSlot2" padding="0" max-height="60"/>
             </View>
           </View>
         </View>
-        <FilterGraph id="filterGraph" max-height="140"/>
+        <FilterGraph id="filterGraph" max-height="140" margin="0" padding="0"/>
       </View>
     </View>
     <View flex-grow="0.2" caption="Automatables" caption-placement="top-left"
@@ -144,41 +148,41 @@
       <View flex-grow="0.2" flex-shrink="1.0">
         <View flex-direction="column">
           <Label text="1" justification="centred" margin="0" padding="0" flex-grow="0.2"
-                 font-size="16"/>
+                 font-size="16" min-height="14"/>
           <Slider slider-type="rotary" slider-textbox="textbox-below" margin="0"
-                  padding="0" parameter="auto1"/>
+                  padding="0" parameter="auto1" min-height="80"/>
         </View>
       </View>
       <View flex-grow="0.2" flex-shrink="1.0">
         <View flex-direction="column">
           <Label text="2" justification="centred" flex-grow="0.2" margin="0" padding="0"
-                 font-size="16"/>
+                 font-size="16" min-width="0.0" min-height="14"/>
           <Slider slider-type="rotary" slider-textbox="textbox-below" margin="0"
-                  padding="0" parameter="auto2"/>
+                  padding="0" parameter="auto2" min-height="80"/>
         </View>
       </View>
       <View flex-grow="0.2" flex-shrink="1.0">
         <View flex-direction="column">
           <Label text="3" justification="centred" margin="0" padding="0" flex-grow="0.2"
-                 font-size="16"/>
+                 font-size="16" min-width="0.0" min-height="14"/>
           <Slider slider-type="rotary" slider-textbox="textbox-below" margin="0"
-                  padding="0" parameter="auto3"/>
+                  padding="0" parameter="auto3" min-height="80"/>
         </View>
       </View>
       <View flex-grow="0.2" flex-shrink="1.0">
         <View flex-direction="column">
           <Label text="4" justification="centred" margin="0" padding="0" flex-grow="0.2"
-                 font-size="16"/>
+                 font-size="16" min-width="0.0" min-height="14"/>
           <Slider slider-type="rotary" slider-textbox="textbox-below" margin="0"
-                  padding="0" parameter="auto4"/>
+                  padding="0" parameter="auto4" min-height="80"/>
         </View>
       </View>
       <View flex-grow="0.2" flex-shrink="1.0">
         <View flex-direction="column">
           <Label text="5" justification="centred" margin="0" padding="0" flex-grow="0.2"
-                 font-size="16"/>
+                 font-size="16" min-width="0.0" min-height="14"/>
           <Slider slider-type="rotary" slider-textbox="textbox-below" margin="0"
-                  padding="0" parameter="auto5"/>
+                  padding="0" parameter="auto5" min-height="80"/>
         </View>
       </View>
     </View>

@@ -129,6 +129,7 @@ private:
     vector<Real> windowedFrame;
     // Will contain the spectrum data
     vector<Real> eSpectrumData;
+    vector<Real> eMelBands;
     Real eSpectralCentroid = 0.0f;
     Real ePitchYIN = 0.0f;
     Real ePitchConfidence = 0.0f;
@@ -147,6 +148,7 @@ private:
     // Essentia algorithms are marked by an "a" prefix
     unique_ptr<Algorithm> aWindowing;
     unique_ptr<Algorithm> aSpectrum;
+//    unique_ptr<Algorithm> aMelBands;
     unique_ptr<Algorithm> aMFCC;
     unique_ptr<Algorithm> aSpectralCentroid;
     unique_ptr<Algorithm> aPitchYIN;
@@ -163,6 +165,7 @@ private:
     unique_ptr<mapper::Device> libmapperDevice;
     unique_ptr<mapper::Signal> sensorSpectralCentroid;
     unique_ptr<mapper::Signal> sensorSpectrum;
+//    unique_ptr<mapper::Signal> sensorMelBands;
     unique_ptr<mapper::Signal> sensorPitchYIN;
     unique_ptr<mapper::Signal> sensorLoudness;
     unique_ptr<mapper::Signal> sensorOnsetDetection;

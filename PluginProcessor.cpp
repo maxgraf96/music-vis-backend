@@ -184,6 +184,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     // Essentia algorithms compute routines
     aWindowing->compute();
     aSpectrum->compute();
+//    aMelBands->compute();
     aSpectralCentroid->compute();
     aPitchYIN->compute();
     aLoudness->compute();
@@ -205,12 +206,18 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         eChordDetectionInput.clear();
     }
 
+    // Hack: Trim spectrum, libmapper supports a maximum of 128 numbers to be submitted simultaneously in an array
+    vector<Real>::const_iterator first = eSpectrumData.begin();
+    vector<Real>::const_iterator last = eSpectrumData.begin() + 128;
+    vector<Real> specData(first, last);
+
     // Poll libmapper device
     libmapperDevice->poll();
 
     // Send data centroid to libmapper
     sensorSpectralCentroid->update(eSpectralCentroid);
-    sensorSpectrum->update(eSpectrumData);
+    sensorSpectrum->update(specData);
+//    sensorMelBands->update(eMelBands);
     sensorPitchYIN->update(ePitchYIN);
     sensorLoudness->update(eLoudness);
     sensorOnsetDetection->update(eOnsetDetection);
@@ -323,6 +330,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
     aWindowing.reset(factory.create("Windowing", "type", "blackmanharris62"));
     aSpectrum.reset(factory.create("Spectrum"));
+//    aMelBands.reset(factory.create("MelBands", "inputSize", static_cast<int>(samplesPerBlock / 2 + 1), "sampleRate", sampleRate, "numberBands", 128));
     aMFCC.reset(factory.create("MFCC"));
     aSpectralCentroid.reset(factory.create("SpectralCentroidTime", "sampleRate", sampleRate));
     aPitchYIN.reset(factory.create("PitchYin", "sampleRate", sampleRate, "frameSize", samplesPerBlock));
@@ -338,6 +346,8 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     aWindowing->output("frame").set(windowedFrame);
     aSpectrum->input("frame").set(windowedFrame);
     aSpectrum->output("spectrum").set(eSpectrumData);
+//    aMelBands->input("spectrum").set(eSpectrumData);
+//    aMelBands->output("bands").set(eMelBands);
 
     // Pitch detection
     aPitchYIN->input("signal").set(eGlobalAudioBuffer);
@@ -523,7 +533,9 @@ juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
 
     tooltip = make_unique<TooltipWindow>(this->getActiveEditor(), 100);
 
-    return new foleys::MagicPluginEditor(magicState, BinaryData::musicvisbackend_xml, BinaryData::musicvisbackend_xmlSize, std::move(builder));
+    auto* editor = new foleys::MagicPluginEditor(magicState, BinaryData::musicvisbackend_xml, BinaryData::musicvisbackend_xmlSize, std::move(builder));
+    editor->setResizable(true, true);
+    return editor;
 }
 
 //==============================================================================
@@ -639,6 +651,7 @@ void AudioPluginAudioProcessor::libmapperSetup(const string& deviceName) {
     libmapperDevice = make_unique<mapper::Device>(deviceName);
     sensorSpectralCentroid = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("spectralCentroid", 1, 'f', nullptr, nullptr, nullptr));
     sensorSpectrum = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("spectrum", 128, 'f', 0, 0, 0));
+//    sensorMelBands = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("melBands", 128, 'f', 0, 0, 0));
     sensorPitchYIN = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("pitchYIN", 1, 'f', 0, 0, 0));
     sensorLoudness = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("loudness", 1, 'f', 0, 0, 0));
     sensorOnsetDetection = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("onsetDetection", 1, 'f', 0, 0, 0));
