@@ -65,6 +65,11 @@ FilterGraph::~FilterGraph()
 
 void FilterGraph::paint (Graphics& g)
 {
+    // Apple AUval runs a test in which no sampling frequency is set which crashes here
+    // This is a workaround
+    if(fs == 0.0){
+        return;
+    }
     // get size info =======================================================================================
     const auto width = float(getWidth());
     const auto height = float(getHeight());
@@ -250,7 +255,7 @@ void FilterGraph::renderTooltip(Point<int>& mousePosRel, Point<int>& mousePosAbs
     	// Convert to dB
         magnitude = 20 * log10(magnitude);
         // Display tooltip
-        tooltip.displayTip(mousePosAbs, String(freq, 1) + "Hz, " + String(magnitude, 1) + "dB");
+        tooltip.displayTip(mousePosAbs, String(freq, 1) + "Hz");
     }
 }
 

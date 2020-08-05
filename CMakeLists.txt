@@ -113,6 +113,8 @@ target_sources(music-vis-backend PRIVATE
         FeatureSlot/FeatureSlotGUI.cpp
         GUIItems/FilterGraphGUIItem.cpp
         GUIItems/FeatureSlotGUIItem.cpp
+        Parameters/MetaParameterFloat.cpp
+        Parameters/MetaParameterChoice.cpp
         )
 
 # `target_compile_definitions` adds some preprocessor definitions to our target. In a Projucer

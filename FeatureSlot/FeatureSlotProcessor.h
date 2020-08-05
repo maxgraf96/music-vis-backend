@@ -16,7 +16,7 @@ using namespace juce;
 using namespace essentia;
 using namespace essentia::standard;
 
-class FeatureSlotProcessor : private AudioProcessorValueTreeState::Listener {
+class FeatureSlotProcessor : private AudioProcessorValueTreeState::Listener, Timer {
 public:
 
     enum Band {
@@ -37,6 +37,8 @@ public:
     void setBand(Band band);
     Band getBand();
 
+    void timerCallback() override;
+
 private:
     // State management
     foleys::MagicProcessorState& magicState;
@@ -51,6 +53,9 @@ private:
     // Will contain the output if the output is a scalar value
     Real outputScalar = -1.0f;
     Value outputValue;
+    // Placeholder for the current value which is updated by a timed function in order
+    // to avoid gui updates from the audio thread
+    float currentValue = 0.0f;
 
     // Factory for creating the algorithm
     standard::AlgorithmFactory& factory = standard::AlgorithmFactory::instance();

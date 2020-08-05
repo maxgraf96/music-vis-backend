@@ -23,6 +23,10 @@ FeatureSlotProcessor::FeatureSlotProcessor(mapper::Device& libmapperDev, foleys:
 
     sensor = make_unique<mapper::Signal>(libmapperDevice.add_output_signal(algoProp.insert(0, "sub_"), 1, 'f', 0, 0, 0));
     sensor->set_rate(30);
+
+    // Start timer for GUI updates
+    stopTimer();
+    startTimer(30);
 }
 
 FeatureSlotProcessor::~FeatureSlotProcessor() {
@@ -33,11 +37,7 @@ void FeatureSlotProcessor::compute() {
     if(algorithm != nullptr && !isAlgorithmChanging.load()){
         algorithm->compute();
         // Update output value for label
-        float val = (int)(outputScalar * 100 + .5);
-        outputValue.setValue((float) (val / 100));
-
-        libmapperDevice.poll();
-        sensor->update((float) (val / 100));
+        currentValue = outputScalar;
     }
 }
 
@@ -79,7 +79,7 @@ Value &FeatureSlotProcessor::getOutputValue() {
 void FeatureSlotProcessor::parameterChanged(const String &parameterID, float newValue) {
     if(parameterID == paramID){
         isAlgorithmChanging.store(true);
-        outputValue.setValue(0);
+        currentValue = 0;
 
         if(algorithm != nullptr){
             algorithm->reset();
@@ -101,5 +101,14 @@ void FeatureSlotProcessor::parameterChanged(const String &parameterID, float new
         }
 
         isAlgorithmChanging.store(false);
+    }
+}
+
+void FeatureSlotProcessor::timerCallback() {
+    if(algorithm != nullptr && !isAlgorithmChanging.load()){
+    outputValue.setValue(currentValue);
+
+    libmapperDevice.poll();
+    sensor->update(currentValue);
     }
 }

@@ -8,25 +8,25 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                        .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-                     #endif
+#endif
                        ), valueTreeState(*this,
                          nullptr, // No undo manager
                          Identifier("music-vis-backend"),
                          {
-                           make_unique<AudioParameterChoice>(
+                           make_unique<MetaParameterChoice>(
                                     "numberOfBands",
                                     "Number of Bands",
                                     StringArray("1", "2", "3"), // Support max 3 bands atm
                                     0
                             ),
-                            make_unique<AudioParameterFloat>(
+                            make_unique<MetaParameterFloat>(
                                     "lowpassCutoff",
                                     "Lowpass Filter Cutoff",
                                     20.0f,
                                     20000.0f,
                                     3000.0f
                                     ),
-                           make_unique<AudioParameterFloat>(
+                           make_unique<MetaParameterFloat>(
                                    "highpassCutoff",
                                    "Highpass Filter Cutoff",
                                    20.0f,
@@ -164,6 +164,19 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     auto totalNumOutputChannels = getTotalNumOutputChannels();
     auto numSamples = buffer.getNumSamples();
 
+    if(numSamples <= 0 || getSampleRate() <= 0.0){
+        return;
+    }
+
+    // Don't calculate if block size is not a factor of 2
+    if(numSamples > 0 && numSamples % 2 != 0){
+        return;
+    }
+
+    if(numSamples >= 4096 || getSampleRate() > 96000){
+        return;
+    }
+
     // In case we have more outputs than inputs, this code clears any output
     // channels that didn't contain input data, (because these aren't
     // guaranteed to be empty - they may contain garbage).
@@ -190,39 +203,26 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     aLoudness->compute();
     aOnsetDetection->compute();
     aSpectralPeaks->compute();
-    aHPCP->compute();
+//    aHPCP->compute();
     aDissonance->compute();
 
-    eChordDetectionInput.emplace_back(eHPCP);
+//    eChordDetectionInput.emplace_back(eHPCP);
 
-    if(eChordDetectionInput.size() > 2){
-        aChordsDetection->compute();
-
-        int strongestChordIdx = std::distance(eChordsStrengths.begin(), std::max_element(eChordsStrengths.begin(), eChordsStrengths.end()));
-        eStrongestChord = eChords[strongestChordIdx];
-
-        eChords.clear();
-        eChordsStrengths.clear();
-        eChordDetectionInput.clear();
-    }
+//    if(eChordDetectionInput.size() > 2){
+//        aChordsDetection->compute();
+//
+//        int strongestChordIdx = std::distance(eChordsStrengths.begin(), std::max_element(eChordsStrengths.begin(), eChordsStrengths.end()));
+//        eStrongestChord = eChords[strongestChordIdx];
+//
+//        eChords.clear();
+//        eChordsStrengths.clear();
+//        eChordDetectionInput.clear();
+//    }
 
     // Hack: Trim spectrum, libmapper supports a maximum of 128 numbers to be submitted simultaneously in an array
-    vector<Real>::const_iterator first = eSpectrumData.begin();
-    vector<Real>::const_iterator last = eSpectrumData.begin() + 128;
-    vector<Real> specData(first, last);
-
-    // Poll libmapper device
-    libmapperDevice->poll();
-
-    // Send data centroid to libmapper
-    sensorSpectralCentroid->update(eSpectralCentroid);
-    sensorSpectrum->update(specData);
-//    sensorMelBands->update(eMelBands);
-    sensorPitchYIN->update(ePitchYIN);
-    sensorLoudness->update(eLoudness);
-    sensorOnsetDetection->update(eOnsetDetection);
-    sensorDissonance->update(eDissonance);
-
+//    vector<Real>::const_iterator first = eSpectrumData.begin();
+//    vector<Real>::const_iterator last = eSpectrumData.begin() + 128;
+//    vector<Real> specData(first, last);
 
     // Additional multiband processing (if more than 1 band is seleted)
     if(*paramNumberOfBands > 0.0f){
@@ -316,6 +316,11 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 //==============================================================================
 void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    // Apples AU validation system doesn't like buffer sizes >= 4096 and high sampling rates
+    if(samplesPerBlock >= 4096 || sampleRate > 96000){
+        return;
+    }
+
     // Reinitialise essentia if not initialised
     if(!essentia::isInitialized()){
         essentia::init();
@@ -326,7 +331,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
     // Create algorithms
     standard::AlgorithmFactory& factory = standard::AlgorithmFactory::instance();
-    streaming::AlgorithmFactory& streamingFactory = streaming::AlgorithmFactory::instance();
+//    streaming::AlgorithmFactory& streamingFactory = streaming::AlgorithmFactory::instance();
 
     aWindowing.reset(factory.create("Windowing", "type", "blackmanharris62"));
     aSpectrum.reset(factory.create("Spectrum"));
@@ -337,8 +342,8 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     aLoudness.reset(factory.create("Loudness"));
     aOnsetDetection.reset(factory.create("OnsetDetection", "method", "hfc", "sampleRate", sampleRate));
     aSpectralPeaks.reset(factory.create("SpectralPeaks", "sampleRate", sampleRate));
-    aHPCP.reset(factory.create("HPCP", "sampleRate", sampleRate, "nonLinear", true));
-    aChordsDetection.reset(factory.create("ChordsDetection", "sampleRate", sampleRate, "windowSize", 1));
+//    aHPCP.reset(factory.create("HPCP", "sampleRate", sampleRate, "nonLinear", true));
+//    aChordsDetection.reset(factory.create("ChordsDetection", "sampleRate", sampleRate, "windowSize", 1));
     aDissonance.reset(factory.create("Dissonance"));
 
     // Connect algorithms
@@ -376,14 +381,14 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     aSpectralPeaks->output("magnitudes").set(eSpectralPeaksMagnitudes);
 
     // Harmonic Pitch Class Profile
-    aHPCP->input("frequencies").set(eSpectralPeaksFrequencies);
-    aHPCP->input("magnitudes").set(eSpectralPeaksMagnitudes);
-    aHPCP->output("hpcp").set(eHPCP);
+//    aHPCP->input("frequencies").set(eSpectralPeaksFrequencies);
+//    aHPCP->input("magnitudes").set(eSpectralPeaksMagnitudes);
+//    aHPCP->output("hpcp").set(eHPCP);
 
     // Chord detection
-    aChordsDetection->input("pcp").set(eChordDetectionInput);
-    aChordsDetection->output("chords").set(eChords);
-    aChordsDetection->output("strength").set(eChordsStrengths);
+//    aChordsDetection->input("pcp").set(eChordDetectionInput);
+//    aChordsDetection->output("chords").set(eChords);
+//    aChordsDetection->output("strength").set(eChordsStrengths);
 
     aDissonance->input("frequencies").set(eSpectralPeaksFrequencies);
     aDissonance->input("magnitudes").set(eSpectralPeaksMagnitudes);
@@ -394,9 +399,15 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     midBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
     highBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
 
-    // Start timer for GUI updates
-    stopTimer();
-    startTimer(static_cast<int>((samplesPerBlock / sampleRate) * 1000));
+    if(sampleRate > 0 && samplesPerBlock > 0){
+        // Start timers for libmapper communication and GUI updates
+        stopTimer(0);
+        stopTimer(1);
+        // Libmapper timer
+        startTimer(0, 10);
+        // GUI timer
+        startTimer(1, static_cast<int>((samplesPerBlock / sampleRate) * 1000));
+    }
 }
 
 bool AudioPluginAudioProcessor::noSolo() {
@@ -495,10 +506,6 @@ void AudioPluginAudioProcessor::releaseResources()
 
 bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
-  #if JucePlugin_IsMidiEffect
-    juce::ignoreUnused (layouts);
-    return true;
-  #else
     // This is the place where you check if the layout is supported.
     // In this template code we only support mono or stereo.
     if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
@@ -506,13 +513,14 @@ bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
         return false;
 
     // This checks if the input layout matches the output layout
-   #if ! JucePlugin_IsSynth
     if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
         return false;
-   #endif
+
+    if (layouts.getMainInputChannelSet() == juce::AudioChannelSet::disabled()
+        || layouts.getMainOutputChannelSet() == juce::AudioChannelSet::disabled())
+        return false;
 
     return true;
-  #endif
 }
 
 //==============================================================================
@@ -528,7 +536,6 @@ juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
     builder->registerJUCEFactories();
     builder->registerFactory("FilterGraph", FilterGraphGUIItem::factory);
     builder->registerFactory("FeatureSlot", FeatureSlotGUIItem::factory);
-
     magicState.setLastEditorSize(1200, 1024);
 
     tooltip = make_unique<TooltipWindow>(this->getActiveEditor(), 100);
@@ -601,8 +608,8 @@ void AudioPluginAudioProcessor::parameterChanged(const String &parameterID, floa
         }
     }
     if(parameterID == "numberOfBands"){
-        magicState.getPropertyAsValue(MULTIBAND_ENABLED_ID.toString()).setValue(newValue - 1);// > 0.0f);
-        magicState.getPropertyAsValue(MIDBAND_ENABLED_ID.toString()).setValue(newValue == 2.0f);
+        magicState.getPropertyAsValue(MULTIBAND_ENABLED_ID.toString()) = newValue >= 1.0f;
+        magicState.getPropertyAsValue(MIDBAND_ENABLED_ID.toString()) = newValue == 2.0f;
 
         // If 2 bands are selected snap highpass cutoff value to lowpass cutoff value
         if(newValue == 1.0f){
@@ -626,18 +633,37 @@ array<dsp::IIR::Filter<float>, 2> &AudioPluginAudioProcessor::getHighpassFilters
     return highpassFilters;
 }
 
-void AudioPluginAudioProcessor::timerCallback() {
-    // Display current spectral centroid
-    magicState.getPropertyAsValue(SPECTRAL_CENTROID_ID.toString()).setValue(roundToInt(eSpectralCentroid));
-    // Only display pitch if confidence is greater than chance
-    auto pitchValue = ePitchConfidence > 0.5 ? ePitchYIN : -1;
-    magicState.getPropertyAsValue(PITCH_YIN_ID.toString()).setValue(roundToInt(pitchValue));
-    // Display current loudness
-    magicState.getPropertyAsValue(LOUDNESS_ID.toString()).setValue(roundToInt(eLoudness));
-    magicState.getPropertyAsValue(ODF_ID.toString()).setValue(eOnsetDetection);
-    var strongestChord = var(eStrongestChord);
-    magicState.getPropertyAsValue(STRONGEST_CHORD_ID.toString()).setValue(strongestChord);
-    magicState.getPropertyAsValue(DISSONANCE_ID.toString()).setValue(eDissonance);
+void AudioPluginAudioProcessor::timerCallback(int timerID) {
+    // Libmapper update timer
+    if(timerID == 0){
+        // Poll libmapper device
+        libmapperDevice->poll();
+
+        // Send data to libmapper
+        sensorSpectralCentroid->update(eSpectralCentroid);
+        // sensorSpectrum->update(specData);
+        // sensorMelBands->update(eMelBands);
+        sensorPitchYIN->update(ePitchYIN);
+        sensorLoudness->update(eLoudness);
+        sensorOnsetDetection->update(eOnsetDetection);
+        sensorDissonance->update(eDissonance);
+    }
+    // GUI update timer
+    else if(timerID == 1){
+        // Display current spectral centroid
+        magicState.getPropertyAsValue(SPECTRAL_CENTROID_ID.toString()).setValue(roundToInt(eSpectralCentroid));
+        // Only display pitch if confidence is greater than chance
+        auto pitchValue = ePitchConfidence > 0.5 ? ePitchYIN : -1;
+        magicState.getPropertyAsValue(PITCH_YIN_ID.toString()).setValue(roundToInt(pitchValue));
+        // Display current loudness
+        magicState.getPropertyAsValue(LOUDNESS_ID.toString()).setValue(roundToInt(eLoudness));
+        magicState.getPropertyAsValue(ODF_ID.toString()).setValue(eOnsetDetection);
+
+        //    var strongestChord = var(eStrongestChord);
+        //    magicState.getPropertyAsValue(STRONGEST_CHORD_ID.toString()).setValue(strongestChord);
+
+        magicState.getPropertyAsValue(DISSONANCE_ID.toString()).setValue(eDissonance);
+    }
 }
 
 void AudioPluginAudioProcessor::updateTrackProperties(const AudioProcessor::TrackProperties &properties) {

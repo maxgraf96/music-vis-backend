@@ -14,6 +14,8 @@
 #include "FeatureSlot/FeatureSlotGUI.h"
 #include "GUIItems/FilterGraphGUIItem.h"
 #include "GUIItems/FeatureSlotGUIItem.h"
+#include "Parameters/MetaParameterFloat.h"
+#include "Parameters/MetaParameterChoice.h"
 
 using namespace juce;
 using namespace std;
@@ -22,7 +24,7 @@ using namespace essentia::standard;
 
 //==============================================================================
 class AudioPluginAudioProcessor  : public juce::AudioProcessor,
-private AudioProcessorValueTreeState::Listener, Timer
+private AudioProcessorValueTreeState::Listener, MultiTimer
 {
 public:
     //==============================================================================
@@ -182,7 +184,7 @@ private:
     // manipulation from the host (such as automations)
     void parameterChanged(const String& parameterID, float newValue) override;
 
-    void timerCallback() override;
+    void timerCallback(int timerID) override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
     //==============================================================================
