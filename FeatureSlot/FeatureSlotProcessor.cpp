@@ -6,22 +6,27 @@
 
 FeatureSlotProcessor::FeatureSlotProcessor(mapper::Device& libmapperDev, foleys::MagicProcessorState& ms, Band b, vector<Real>& inputBuffer, int slotNo):
         libmapperDevice(libmapperDev), magicState(ms), band(b), inputAudioBuffer(inputBuffer), slotNumber(slotNo) {
-    // Get connected property from valueTreeState
+    // Get connected property from state management
     std::string algoProp = band == LOW ? "low" : band == MID ? "mid" : "high";
     algoProp.append("Slot").append(to_string(slotNo));
 
+    // Connect parameter listener with state management
     paramID = algoProp;
     magicState.getValueTreeState().addParameterListener(algoProp, this);
 
-    // Initialise algorithm if selected
+    // Initialise algorithm if one is selected
     int paramVal = magicState.getValueTreeState().getParameterAsValue(algoProp).getValue();
     String algoName = featureSlotAlgorithmOptions.getReference(paramVal);
     initialiseAlgorithm(algoName);
 
+    // Connect to value in state management
     String val = algoProp.append("Value");
     outputValue.referTo(magicState.getPropertyAsValue(val));
 
+    // Create libmapper signal for this FeatureSlot
     sensor = make_unique<mapper::Signal>(libmapperDevice.add_output_signal(algoProp.insert(0, "sub_"), 1, 'f', 0, 0, 0));
+    // Limit transmission rate to 30 times per second
+    // Note: This has no impact on the frame rate in the frontend
     sensor->set_rate(30);
 
     // Start timer for GUI updates
@@ -34,26 +39,23 @@ FeatureSlotProcessor::~FeatureSlotProcessor() {
 }
 
 void FeatureSlotProcessor::compute() {
+    // Only compute if there is an algorithm selected and the algorithm is not currently changing.
     if(algorithm != nullptr && !isAlgorithmChanging.load()){
+        // Compute output value
         algorithm->compute();
+
         // Update output value for label
         currentValue = outputScalar;
     }
 }
 
-FeatureSlotProcessor::Band FeatureSlotProcessor::getBand() {
-    return band;
-}
-
-void FeatureSlotProcessor::setBand(Band band){
-    this->band = band;
-}
-
 void FeatureSlotProcessor::initialiseAlgorithm(String algoStr) {
-    // Big switcharoo for algorithm initialisation
+    // Algorithm initialisation
+    // If there is no algorithm selected, reset the algorithm field to nullptr
     if(algoStr == "-"){
         algorithm.reset(nullptr);
     }
+    // Otherwise initialise with respective algorithm
     if(algoStr == "Loudness"){
         algorithm.reset(factory.create("Loudness"));
         algorithm->input("signal").set(inputAudioBuffer);
@@ -64,12 +66,6 @@ void FeatureSlotProcessor::initialiseAlgorithm(String algoStr) {
         algorithm->input("array").set(inputAudioBuffer);
         algorithm->output("centroid").set(outputScalar);
     }
-
-    // Add new signal
-    std::string signalName = band == LOW ? "Low" : band == MID ? "Mid" : "High";
-    signalName.append("_Slot_").append(to_string(slotNumber)); //.append(":").append(algoStr.toStdString());
-    // Remove any whitespaces from string, as libmapper doesn't support spaces in signal names :(((
-    signalName.erase (std::remove (signalName.begin(), signalName.end(), ' '), signalName.end());
 }
 
 Value &FeatureSlotProcessor::getOutputValue() {
@@ -78,17 +74,22 @@ Value &FeatureSlotProcessor::getOutputValue() {
 
 void FeatureSlotProcessor::parameterChanged(const String &parameterID, float newValue) {
     if(parameterID == paramID){
+        // Block further computation calls while algorithm is changing
         isAlgorithmChanging.store(true);
+        // Reset output value
         currentValue = 0;
 
+        // Reset algorithm field if no algorithm selected
         if(algorithm != nullptr){
             algorithm->reset();
             algorithm.reset(nullptr);
         }
-        // Convert choice index to int
+
+        // Convert index from combobox items to int
         int idx = static_cast<int>(newValue) + 1;
         // If no item is selected don't initialise an algorithm
         if(idx == 0){
+            isAlgorithmChanging.store(false);
             return;
         }
 
@@ -100,15 +101,19 @@ void FeatureSlotProcessor::parameterChanged(const String &parameterID, float new
             initialiseAlgorithm(algoName);
         }
 
+        // Reset flag and thereby re-enable computation
         isAlgorithmChanging.store(false);
     }
 }
 
 void FeatureSlotProcessor::timerCallback() {
     if(algorithm != nullptr && !isAlgorithmChanging.load()){
-    outputValue.setValue(currentValue);
+        // Update the output value
+        outputValue.setValue(currentValue);
 
-    libmapperDevice.poll();
-    sensor->update(currentValue);
+        // Poll libmapper device
+        libmapperDevice.poll();
+        // Update signal value
+        sensor->update(currentValue);
     }
 }

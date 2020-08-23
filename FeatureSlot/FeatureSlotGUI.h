@@ -11,6 +11,9 @@
 using namespace std;
 using namespace juce;
 
+/**
+ * GUI frontend for the FeatureSlot component
+ */
 class FeatureSlotGUI : public Component {
 public:
     explicit FeatureSlotGUI(foleys::MagicProcessorState&);
@@ -25,9 +28,12 @@ private:
     // State management
     foleys::MagicProcessorState& magicState;
 
-    // Display stuff
+    // GUI elements
+    // Combo box for algorithm selection
     unique_ptr<ComboBox> algorithmComboBox;
+    // Connection to state management for the combobox
     unique_ptr<AudioProcessorValueTreeState::ComboBoxAttachment> attachment;
+    // Label to display current value
     unique_ptr<Label> valueLabel;
 };
 

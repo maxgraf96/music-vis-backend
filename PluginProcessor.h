@@ -113,9 +113,7 @@ private:
     // PluginGUIMagic stuff
     foleys::MagicProcessorState magicState { *this, valueTreeState };
 
-    Label* spectralCentroidLabel;
-
-    // Necessary for enabling tooltips
+    // Necessary JUCE component for enabling tooltips
     unique_ptr<TooltipWindow> tooltip;
 
     // Values estimated by Essentia are marked with an "e" prefix
@@ -150,35 +148,39 @@ private:
     // Essentia algorithms are marked by an "a" prefix
     unique_ptr<Algorithm> aWindowing;
     unique_ptr<Algorithm> aSpectrum;
-//    unique_ptr<Algorithm> aMelBands;
-    unique_ptr<Algorithm> aMFCC;
     unique_ptr<Algorithm> aSpectralCentroid;
     unique_ptr<Algorithm> aPitchYIN;
     unique_ptr<Algorithm> aLoudness;
     unique_ptr<Algorithm> aOnsetDetection;
     unique_ptr<Algorithm> aSpectralPeaks;
-    unique_ptr<Algorithm> aHPCP; // Harmonic Pitch Class Profile
     unique_ptr<Algorithm> aChordsDetection;
     unique_ptr<Algorithm> aDissonance; // Outputs sensory dissonance on a scale from 0 (consonant) to 1 (dissonant)
+    unique_ptr<Algorithm> aMFCC;
 
-    // Libmapper stuff
+    // Currently unused algorithms
+    // unique_ptr<Algorithm> aHPCP; // Harmonic Pitch Class Profile
+    // unique_ptr<Algorithm> aMelBands;
+
+
+    // Libmapper related fields
     // Initialise the libmapper device and its global signals
     void libmapperSetup(const string& deviceName);
     unique_ptr<mapper::Device> libmapperDevice;
     unique_ptr<mapper::Signal> sensorSpectralCentroid;
     unique_ptr<mapper::Signal> sensorSpectrum;
-//    unique_ptr<mapper::Signal> sensorMelBands;
-    unique_ptr<mapper::Signal> sensorPitchYIN;
     unique_ptr<mapper::Signal> sensorLoudness;
     unique_ptr<mapper::Signal> sensorOnsetDetection;
     unique_ptr<mapper::Signal> sensorDissonance;
     vector<unique_ptr<mapper::Signal>> sensorsAutomatables;
+    unique_ptr<mapper::Signal> sensorPitchYIN;
+
+    // Currently unused sensor
+    // unique_ptr<mapper::Signal> sensorMelBands;
 
     // Feature slots
     vector<unique_ptr<FeatureSlotProcessor>> lowBandSlots;
     vector<unique_ptr<FeatureSlotProcessor>> midBandSlots;
     vector<unique_ptr<FeatureSlotProcessor>> highBandSlots;
-    int slotCounter = 0;
 
     // Called if one of the parameters is changed, either through UI interaction or
     // manipulation from the host (such as automations)

@@ -8,6 +8,9 @@
 #include "../foleys_gui_magic/foleys_gui_magic.h"
 #include "../jucefiltergraph/FilterGraph.h"
 
+/**
+ * Wrapper class for FilterGraph integration into the GUI system
+ */
 class FilterGraphGUIItem : public foleys::GuiItem {
 public:
     FOLEYS_DECLARE_GUI_FACTORY (FilterGraphGUIItem)
@@ -22,6 +25,7 @@ public:
     }
 
 private:
+    // The wrapped FilterGraph component
     unique_ptr<FilterGraph> filterGraph;
 };
 

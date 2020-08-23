@@ -12,6 +12,9 @@
 
 using namespace std;
 
+/**
+ * Wrapper class for the FeatureSlot GUI element into the GUI system
+ */
 class FeatureSlotGUIItem : public foleys::GuiItem {
 public:
     FOLEYS_DECLARE_GUI_FACTORY (FeatureSlotGUIItem)

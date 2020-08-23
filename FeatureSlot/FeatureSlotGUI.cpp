@@ -6,17 +6,22 @@
 
 FeatureSlotGUI::FeatureSlotGUI(foleys::MagicProcessorState& ms)
 : magicState(ms) {
+    // Create the combobox for selecting the algorithm
     algorithmComboBox = make_unique<ComboBox>();
+    // Create the label displaying the current output value
     valueLabel = make_unique<Label>("displayValue", "");
 
-    // Add to parent
+    // Add to component
     addAndMakeVisible(*algorithmComboBox);
     addAndMakeVisible(*valueLabel);
 
+    // Set GUI size
+    // TODO: Make dynamic for better GUI responsiveness
     setSize(200, 100);
 }
 
 void FeatureSlotGUI::registerValue(Value& value){
+    // Hook up label value to state management
     valueLabel->getTextValue().referTo(value);
 }
 
@@ -25,6 +30,7 @@ void FeatureSlotGUI::attachToParameter(const String& value, AudioProcessorValueT
     if(value.isNotEmpty()){
         if(auto* parameter = magicState.getParameter(value)){
             algorithmComboBox->clear();
+            // Populate combo box menu items with available algorithms
             algorithmComboBox->addItemList(featureSlotAlgorithmOptions, 1);
             attachment = magicState.createAttachment(value, *algorithmComboBox);
         }
@@ -36,7 +42,7 @@ FeatureSlotGUI::~FeatureSlotGUI(){
 }
 
 void FeatureSlotGUI::paint(Graphics &) {
-
+    // Needed for integrity as JUCE component
 }
 
 void FeatureSlotGUI::resized() {

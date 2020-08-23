@@ -164,6 +164,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     auto totalNumOutputChannels = getTotalNumOutputChannels();
     auto numSamples = buffer.getNumSamples();
 
+    // Disable processing on invalid block size / sample rate
     if(numSamples <= 0 || getSampleRate() <= 0.0){
         return;
     }
@@ -173,6 +174,9 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         return;
     }
 
+    // Apples AU validation system currently doesn't accept buffer sizes >= 4096 and sampling rates greater than 96000
+    // The issue likely lies in the memory management of the current implementation
+    // TODO: Find and fix the error in a future version
     if(numSamples >= 4096 || getSampleRate() > 96000){
         return;
     }
@@ -197,34 +201,36 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     // Essentia algorithms compute routines
     aWindowing->compute();
     aSpectrum->compute();
-//    aMelBands->compute();
     aSpectralCentroid->compute();
     aPitchYIN->compute();
     aLoudness->compute();
     aOnsetDetection->compute();
     aSpectralPeaks->compute();
-//    aHPCP->compute();
     aDissonance->compute();
+    // aMelBands->compute();
+    // aHPCP->compute();
 
-//    eChordDetectionInput.emplace_back(eHPCP);
+    // Chord detection (currently not in use)
+    /*
+    eChordDetectionInput.emplace_back(eHPCP);
+    if(eChordDetectionInput.size() > 2){
+        aChordsDetection->compute();
 
-//    if(eChordDetectionInput.size() > 2){
-//        aChordsDetection->compute();
-//
-//        int strongestChordIdx = std::distance(eChordsStrengths.begin(), std::max_element(eChordsStrengths.begin(), eChordsStrengths.end()));
-//        eStrongestChord = eChords[strongestChordIdx];
-//
-//        eChords.clear();
-//        eChordsStrengths.clear();
-//        eChordDetectionInput.clear();
-//    }
+        int strongestChordIdx = std::distance(eChordsStrengths.begin(), std::max_element(eChordsStrengths.begin(), eChordsStrengths.end()));
+        eStrongestChord = eChords[strongestChordIdx];
+
+        eChords.clear();
+        eChordsStrengths.clear();
+        eChordDetectionInput.clear();
+    }
 
     // Hack: Trim spectrum, libmapper supports a maximum of 128 numbers to be submitted simultaneously in an array
-//    vector<Real>::const_iterator first = eSpectrumData.begin();
-//    vector<Real>::const_iterator last = eSpectrumData.begin() + 128;
-//    vector<Real> specData(first, last);
+    vector<Real>::const_iterator first = eSpectrumData.begin();
+    vector<Real>::const_iterator last = eSpectrumData.begin() + 128;
+    vector<Real> specData(first, last);
+    */
 
-    // Additional multiband processing (if more than 1 band is seleted)
+    // Additional multiband processing (if more than 1 band is selected)
     if(*paramNumberOfBands > 0.0f){
         lowBuffer->clear();
         midBuffer->clear();
@@ -316,43 +322,44 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 //==============================================================================
 void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Apples AU validation system doesn't like buffer sizes >= 4096 and high sampling rates
     if(samplesPerBlock >= 4096 || sampleRate > 96000){
         return;
     }
 
-    // Reinitialise essentia if not initialised
+    // Reinitialise essentia if it is not initialised
     if(!essentia::isInitialized()){
         essentia::init();
     }
 
-    // Store sr in state management
+    // Store sample rate in state management
     magicState.getPropertyAsValue("sampleRate").setValue(sampleRate);
 
     // Create algorithms
     standard::AlgorithmFactory& factory = standard::AlgorithmFactory::instance();
-//    streaming::AlgorithmFactory& streamingFactory = streaming::AlgorithmFactory::instance();
 
     aWindowing.reset(factory.create("Windowing", "type", "blackmanharris62"));
     aSpectrum.reset(factory.create("Spectrum"));
-//    aMelBands.reset(factory.create("MelBands", "inputSize", static_cast<int>(samplesPerBlock / 2 + 1), "sampleRate", sampleRate, "numberBands", 128));
     aMFCC.reset(factory.create("MFCC"));
     aSpectralCentroid.reset(factory.create("SpectralCentroidTime", "sampleRate", sampleRate));
     aPitchYIN.reset(factory.create("PitchYin", "sampleRate", sampleRate, "frameSize", samplesPerBlock));
     aLoudness.reset(factory.create("Loudness"));
     aOnsetDetection.reset(factory.create("OnsetDetection", "method", "hfc", "sampleRate", sampleRate));
     aSpectralPeaks.reset(factory.create("SpectralPeaks", "sampleRate", sampleRate));
-//    aHPCP.reset(factory.create("HPCP", "sampleRate", sampleRate, "nonLinear", true));
-//    aChordsDetection.reset(factory.create("ChordsDetection", "sampleRate", sampleRate, "windowSize", 1));
     aDissonance.reset(factory.create("Dissonance"));
+
+    // Currently unused algorithms
+    // aMelBands.reset(factory.create("MelBands", "inputSize", static_cast<int>(samplesPerBlock / 2 + 1), "sampleRate", sampleRate, "numberBands", 128));
+    // aHPCP.reset(factory.create("HPCP", "sampleRate", sampleRate, "nonLinear", true));
+    // aChordsDetection.reset(factory.create("ChordsDetection", "sampleRate", sampleRate, "windowSize", 1));
 
     // Connect algorithms
     aWindowing->input("frame").set(eGlobalAudioBuffer);
     aWindowing->output("frame").set(windowedFrame);
     aSpectrum->input("frame").set(windowedFrame);
     aSpectrum->output("spectrum").set(eSpectrumData);
-//    aMelBands->input("spectrum").set(eSpectrumData);
-//    aMelBands->output("bands").set(eMelBands);
+
+    // aMelBands->input("spectrum").set(eSpectrumData);
+    // aMelBands->output("bands").set(eMelBands);
 
     // Pitch detection
     aPitchYIN->input("signal").set(eGlobalAudioBuffer);
@@ -369,7 +376,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
     // Onset detection
     // Dummy phase vector necessary as essentia algorithms must be initialised with all fields set to something
-    // Phase would only be used in the complex ODF, so we can dummy the data here
+    // Phase would only be used in the complex ODF, so we can use an empty vector here
     vector<Real> dummyPhase;
     aOnsetDetection->input("spectrum").set(eSpectrumData);
     aOnsetDetection->input("phase").set(dummyPhase);
@@ -380,27 +387,29 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     aSpectralPeaks->output("frequencies").set(eSpectralPeaksFrequencies);
     aSpectralPeaks->output("magnitudes").set(eSpectralPeaksMagnitudes);
 
-    // Harmonic Pitch Class Profile
-//    aHPCP->input("frequencies").set(eSpectralPeaksFrequencies);
-//    aHPCP->input("magnitudes").set(eSpectralPeaksMagnitudes);
-//    aHPCP->output("hpcp").set(eHPCP);
-
-    // Chord detection
-//    aChordsDetection->input("pcp").set(eChordDetectionInput);
-//    aChordsDetection->output("chords").set(eChords);
-//    aChordsDetection->output("strength").set(eChordsStrengths);
-
     aDissonance->input("frequencies").set(eSpectralPeaksFrequencies);
     aDissonance->input("magnitudes").set(eSpectralPeaksMagnitudes);
     aDissonance->output("dissonance").set(eDissonance);
 
-    // Setup band buffers
+    // Currently unused
+    // Harmonic Pitch Class Profile
+    // aHPCP->input("frequencies").set(eSpectralPeaksFrequencies);
+    // aHPCP->input("magnitudes").set(eSpectralPeaksMagnitudes);
+    // aHPCP->output("hpcp").set(eHPCP);
+
+    // Chord detection
+    // aChordsDetection->input("pcp").set(eChordDetectionInput);
+    // aChordsDetection->output("chords").set(eChords);
+    // aChordsDetection->output("strength").set(eChordsStrengths);
+    // End Currently unused
+
+    // Setup sub-band buffers
     lowBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
     midBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
     highBuffer = make_unique<AudioBuffer<float>>(2, samplesPerBlock);
 
     if(sampleRate > 0 && samplesPerBlock > 0){
-        // Start timers for libmapper communication and GUI updates
+        // Reset/start timers for libmapper communication and GUI updates
         stopTimer(0);
         stopTimer(1);
         // Libmapper timer
@@ -416,6 +425,7 @@ bool AudioPluginAudioProcessor::noSolo() {
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
 {
+    // Remove parameter listeners from state management to avoid memory leaks
     magicState.getValueTreeState().removeParameterListener("numberOfBands", this);
     magicState.getValueTreeState().removeParameterListener("lowpassCutoff", this);
     magicState.getValueTreeState().removeParameterListener("highpassCutoff", this);
@@ -538,6 +548,7 @@ juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
     builder->registerFactory("FeatureSlot", FeatureSlotGUIItem::factory);
     magicState.setLastEditorSize(1200, 1024);
 
+    // Initialise tooltip
     tooltip = make_unique<TooltipWindow>(this->getActiveEditor(), 100);
 
     auto* editor = new foleys::MagicPluginEditor(magicState, BinaryData::musicvisbackend_xml, BinaryData::musicvisbackend_xmlSize, std::move(builder));
@@ -641,35 +652,39 @@ void AudioPluginAudioProcessor::timerCallback(int timerID) {
 
         // Send data to libmapper
         sensorSpectralCentroid->update(eSpectralCentroid);
-        // sensorSpectrum->update(specData);
-        // sensorMelBands->update(eMelBands);
         sensorPitchYIN->update(ePitchYIN);
         sensorLoudness->update(eLoudness);
         sensorOnsetDetection->update(eOnsetDetection);
         sensorDissonance->update(eDissonance);
+
+        // sensorSpectrum->update(specData);
+        // sensorMelBands->update(eMelBands);
     }
     // GUI update timer
     else if(timerID == 1){
-        // Display current spectral centroid
+        // Display current feature extraction values in GUI
         magicState.getPropertyAsValue(SPECTRAL_CENTROID_ID.toString()).setValue(roundToInt(eSpectralCentroid));
         // Only display pitch if confidence is greater than chance
         auto pitchValue = ePitchConfidence > 0.5 ? ePitchYIN : -1;
         magicState.getPropertyAsValue(PITCH_YIN_ID.toString()).setValue(roundToInt(pitchValue));
-        // Display current loudness
         magicState.getPropertyAsValue(LOUDNESS_ID.toString()).setValue(roundToInt(eLoudness));
         magicState.getPropertyAsValue(ODF_ID.toString()).setValue(eOnsetDetection);
+        magicState.getPropertyAsValue(DISSONANCE_ID.toString()).setValue(eDissonance);
 
         //    var strongestChord = var(eStrongestChord);
         //    magicState.getPropertyAsValue(STRONGEST_CHORD_ID.toString()).setValue(strongestChord);
-
-        magicState.getPropertyAsValue(DISSONANCE_ID.toString()).setValue(eDissonance);
     }
 }
 
 void AudioPluginAudioProcessor::updateTrackProperties(const AudioProcessor::TrackProperties &properties) {
     AudioProcessor::updateTrackProperties(properties);
 
-    // skip for the while
+    // Skip for the while
+    // This can be used in the future when the naming routines of different DAWs are understood.
+    // It allows for the identification of the plugin by means of the track name it is assigned to
+    // However, currently it only works "as expected" in Ableton Live, hence it is disabled for now...
+    // There would probably be a separate way of handling the naming for each DAW
+    // since there is no unified naming convention for all DAWs
     // libmapperSetup(properties.name.toStdString());
 }
 
@@ -677,11 +692,11 @@ void AudioPluginAudioProcessor::libmapperSetup(const string& deviceName) {
     libmapperDevice = make_unique<mapper::Device>(deviceName);
     sensorSpectralCentroid = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("spectralCentroid", 1, 'f', nullptr, nullptr, nullptr));
     sensorSpectrum = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("spectrum", 128, 'f', 0, 0, 0));
-//    sensorMelBands = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("melBands", 128, 'f', 0, 0, 0));
     sensorPitchYIN = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("pitchYIN", 1, 'f', 0, 0, 0));
     sensorLoudness = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("loudness", 1, 'f', 0, 0, 0));
     sensorOnsetDetection = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("onsetDetection", 1, 'f', 0, 0, 0));
     sensorDissonance = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("dissonance", 1, 'f', 0, 0, 0));
+//    sensorMelBands = make_unique<mapper::Signal>(libmapperDevice->add_output_signal("melBands", 128, 'f', 0, 0, 0));
 
     sensorSpectralCentroid->set_rate(30);
     sensorSpectrum->set_rate(30);

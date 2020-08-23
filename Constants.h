@@ -8,7 +8,8 @@
 #include <cmath>
 #include <juce_audio_processors/juce_audio_processors.h>
 
-const double SQRT_2_OVER_2 = sqrt(2) / 2;
+// sqrt(2)/2 for standard filter quality value
+const double SQRT_2_OVER_2 = sqrt(2.0) / 2.0;
 
 // Algorithms supported by feature slots
 static juce::StringArray featureSlotAlgorithmOptions = { "-", "Loudness", "Spectral Centroid" };

@@ -21,7 +21,7 @@
       </Types>
     </Style>
   </Styles>
-  <View id="root" resizable="1" resize-corner="1" width="1200" height="1024"
+  <View id="root" resizable="1" resize-corner="0" width="1200" height="1024"
         flex-direction="column" flex-align-self="stretch" repaint-hz="30">
     <Label text="music-vis-backend" font-size="24" height="" max-height="48"
            id="header" margin="0" padding="1"/>
@@ -95,7 +95,7 @@
                       padding="0" min-height="0.0"/>
             </View>
             <View max-height="70" margin="0" padding="0" height="" min-height="60">
-              <Label text="Slot 1" max-width="80" font-size="16"/>
+              <Label text="Slot 1" max-width="80" font-size="16" padding=""/>
               <FeatureSlot featureSlotParameter="lowSlot1" id="fSLow1" max-height="60" padding="0"
                            min-height="60"/>
             </View>
