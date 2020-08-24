@@ -14,9 +14,7 @@ FeatureSlotGUIItem::FeatureSlotGUIItem(foleys::MagicGUIBuilder& builder, const j
         {
     if (auto* proc = dynamic_cast<AudioPluginAudioProcessor*>(builder.getMagicState().getProcessor()))
     {
-        //magicState.reset(&proc->getMagicState());
         featureSlotGUI = make_unique<FeatureSlotGUI>(proc->getMagicState());
-
         addAndMakeVisible (featureSlotGUI.get());
     }
 }
@@ -39,7 +37,7 @@ void FeatureSlotGUIItem::update() {
             featureSlotGUI->registerValue(highBandSlots[slotNo - 1]->getOutputValue());
         }
 
-        // Attach to value last
+        // Lastly, attach to value
         featureSlotGUI->attachToParameter(valStr, magicState.getValueTreeState());
     }
 }

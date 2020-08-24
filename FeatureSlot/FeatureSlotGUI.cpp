@@ -16,7 +16,7 @@ FeatureSlotGUI::FeatureSlotGUI(foleys::MagicProcessorState& ms)
     addAndMakeVisible(*valueLabel);
 
     // Set GUI size
-    // TODO: Make dynamic for better GUI responsiveness
+    // TODO, Low prio: Make dynamic for better GUI responsiveness
     setSize(200, 100);
 }
 

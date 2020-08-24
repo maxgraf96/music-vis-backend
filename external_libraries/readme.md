@@ -1,0 +1,2 @@
+This folder contains external libraries required to run the project. Currently only Essentia (https://essentia.upf.edu/)
+is included here. At the moment, Essentia is statically linked to simplify the installation process of the system.

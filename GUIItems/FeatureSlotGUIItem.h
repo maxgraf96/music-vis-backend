@@ -21,19 +21,34 @@ public:
 
     FeatureSlotGUIItem(foleys::MagicGUIBuilder& builder, const juce::ValueTree& node);
 
+    /**
+     * Pass-through method that connects the GUI item's wrapped FeatureSlot instance object to the state management
+     */
     void update() override;
+
+    /**
+     * Method to populate the FeatureSlot's combobox choices
+     * @return
+     */
     std::vector<foleys::SettableProperty> getSettableProperties() const override;
 
+    /**
+     * Returns the wrapped FeatureSlotGUI instance object
+     * @return
+     */
     juce::Component* getWrappedComponent() override
     {
         return featureSlotGUI.get();
     }
 
 private:
+    // References to the FeatureSlotProcessors for each sub-band
     vector<unique_ptr<FeatureSlotProcessor>>& lowBandSlots;
     vector<unique_ptr<FeatureSlotProcessor>>& midBandSlots;
     vector<unique_ptr<FeatureSlotProcessor>>& highBandSlots;
+    // Pointer to the wrapped FeatureSlotGUI instance object
     unique_ptr<FeatureSlotGUI> featureSlotGUI;
+    // State management
     foleys::MagicProcessorState& magicState;
 };
 

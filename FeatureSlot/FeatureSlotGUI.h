@@ -18,6 +18,11 @@ class FeatureSlotGUI : public Component {
 public:
     explicit FeatureSlotGUI(foleys::MagicProcessorState&);
     ~FeatureSlotGUI();
+    /**
+     * Connector method that attaches the FeatureSlot's output value to the state management
+     * @param value The value to attach
+     * @param vts The ValueTreeState object (state management)
+     */
     void attachToParameter(const String& value, AudioProcessorValueTreeState& vts);
     void paint (Graphics&) override;
     void resized() override;
@@ -25,7 +30,7 @@ public:
     void registerValue(Value& value);
 
 private:
-    // State management
+    // State management wrapper
     foleys::MagicProcessorState& magicState;
 
     // GUI elements

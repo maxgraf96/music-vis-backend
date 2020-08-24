@@ -22,6 +22,13 @@ class FilterGraph    : public Component,
     private AudioProcessorValueTreeState::Listener, ChangeBroadcaster, ChangeListener
 {
 public:
+    /**
+     * Custom constructor for this project. Connects the FilterGraph component to the two filters used to create the
+     * sub-bands.
+     * @param lowpassFilters The two (one for each channel) lowpass filters
+     * @param highpassFilters The two highpass filters
+     * @param sampleRate System's current sample rate
+     */
     FilterGraph(array<dsp::IIR::Filter<float>, 2>& lowpassFilters,
             array<dsp::IIR::Filter<float>, 2>& highpassFilters,
             double sampleRate,
@@ -86,7 +93,7 @@ private:
 	// nn drag
     void renderTooltip(Point<int>& mousePosRel, Point<int>& mousePosAbs);
 
-	// Reference to state management tree
+	// Reference to state management
     AudioProcessorValueTreeState& vts;
     Value lowpassCutoff;
     Value highpassCutoff;
