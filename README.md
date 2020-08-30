@@ -40,4 +40,26 @@ If you decide to remove the software from your system:
     - Run `./uninstall_apps.sh` if you want to remove the software but keep the dependencies.
 
 ## Installation - Development
-Coming soon...
+1. Grab the current [release](https://github.com/maxgraf96/music-vis-backend/releases)
+2. Install dependencies
+    - Open a terminal
+    - Navigate to the unzipped release folder
+    - Execute `./install_dependencies.sh`
+        - Note: If you do not have the Apple Developer Tools installed on your machine yet, you will be prompted to download and install them. 
+        They are necessary to compile C/C++ code on macOS. Following that, the script will install FFTW, liblo and libmapper to your machine (specifically, to `/usr/local/include` and `/usr/local/lib`).
+        - You may have to re-run the `./install_dependencies.sh` command if you did not have the Apple Developer Tools installed already.
+        - If you already have some of the required dependencies installed, 
+        you can instead navigate into the `dependencies` folder and use the dedicated installer scripts `install_fftw.sh`, `install_liblo.sh` and `install_libmapper.sh`.
+3. Download and install [JUCE](https://juce.com/)
+4. Download the source code
+5. Make sure that there are no whitespaces in the path leading to your source folder
+6. Open the `music-vis-backend` folder in the IDE of your choice
+7. Open the `CMakeLists.txt` file
+8. Go to line 23 and change `"~/IJUCE"` in `list(APPEND CMAKE_PREFIX_PATH "~/IJUCE")` to your JUCE installation folder path
+9. Run one of the CMake configurations
+    - `music-vis-backend_VST3` will build the VST3 plugin
+    - `music-vis-backend_AU` will build the AU plugin
+    - `music-vis-backend_Standalone` will build a standalone executable version (*.app file) of the software
+10. Results of build will be in the `cmake-build-debug/music-vis-backend_artefacts` or 
+`cmake-build-release/music-vis-backend_artefacts` folders, depending on your configuration.
+11. Code away :)
