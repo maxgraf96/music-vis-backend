@@ -1,18 +1,43 @@
-# music-vis-backend
+# Interstell.AR - Backend
+This is the repository for the backend of the Interstell.AR software system. Although the source code
+is for the backend, the release channel of this repository contains all components of the system at the current point.
 
-*Note: Only macOS is supported at the moment.*
+*Note: Only macOS Mojave (10.14) or higher is supported at the moment.*
 
 ## Installation - Use
 1. Grab the current [release](https://github.com/maxgraf96/music-vis-backend/releases)
 2. Install dependencies
-- If you are using [Homebrew](https://brew.sh/), open a terminal and run `brew install liblo` to install [liblo](http://liblo.sourceforge.net/). As of now, liblo is the only dependency that can be installed via Homebrew. Navigate to the release folder and run `./install_libmapper.sh` to install [libmapper](https://libmapper.github.io/) as well as `./install_fftw.sh` to install [FFTW](http://www.fftw.org/).
-- If you are not using Homebrew, navigate to the release folder in your terminal and run `./install_dependencies.sh`. 
-If you do not have the Apple Developer Tools installed on your machine yet, you will be prompted to download and install them. They are necessary to compile C/C++ code on macOS. Following that the script will install FFTW, liblo and libmapper to your machine (specifically, to `/usr/local/include` and `/usr/local/lib`).
-3. Execute `music-vis-backend-package.pkg` and follow the installation process. This will install a standalone version of the software (in your Applications folder) as well as an audio plugin in the VST3 format
-4. Open your favourite DAW (Ableton Live) and add the `music-vis-backend` plugin to a track
-5. Open the `WebMapper` application in the release folder. (*Optional: Drag the `WebMapper` application to your `Applications` folder for easy access*)
-6. ??? (Frontend connection to 3D visualisation coming soon)
-7. Profit :)
+    - Open a terminal
+    - Navigate to the unzipped release folder
+    - Execute `./install_dependencies.sh`
+        - Note: If you do not have the Apple Developer Tools installed on your machine yet, you will be prompted to download and install them. 
+        They are necessary to compile C/C++ code on macOS. Following that, the script will install FFTW, liblo and libmapper to your machine (specifically, to `/usr/local/include` and `/usr/local/lib`).
+        - You may have to re-run the `./install_dependencies.sh` command if you did not have the Apple Developer Tools installed already.
+        - If you already have some of the required dependencies installed, 
+        you can instead navigate into the `dependencies` folder and use the dedicated installer scripts `install_fftw.sh`, `install_liblo.sh` and `install_libmapper.sh`.
+3. Open `interstellar_installer.pkg` and follow the installation process. 
+This will install:
+    - A standalone version of the backend
+    - Audio plugins in the VST3 and AU formats
+    - The "interstellar" application (the frontend of the system producing the visualisations)
+    - The "Webmapper" interface application
+4. Open your favourite digital audio workstation and add the `music-vis-backend` plugin to a track
+5. Open the "interstellar" application in your Applications folder.
+6. Open the "Webmapper" application in your Applications folder.
+7. In the Webmapper interface you should now see one device named "music-vis-backend-libmapper.1". 
+Additionally, you should see devices for all visual objects in the frontend. (See screenshot below)
+
+![](https://i.imgur.com/w6lkJiE.png)
+
+## Uninstallation
+If you decide to remove the software from your system:
+1. Open a terminal
+2. Navigate to the unzipped release folder
+3. Navigate to the folder `uninstall`
+4. Uninstallation
+    - Run `./uninstall_everything.sh` to remove both the dependencies and the software (the plugins, the frontend application and the Webmapper application)
+    - Run `./uninstall_dependencies.sh` if you want to remove the dependencies but keep the software.
+    - Run `./uninstall_apps.sh` if you want to remove the software but keep the dependencies.
 
 ## Installation - Development
-todo...
+Coming soon...
