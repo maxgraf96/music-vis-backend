@@ -60,6 +60,6 @@ If you decide to remove the software from your system:
     - `music-vis-backend_VST3` will build the VST3 plugin
     - `music-vis-backend_AU` will build the AU plugin
     - `music-vis-backend_Standalone` will build a standalone executable version (*.app file) of the software
-10. Results of build will be in the `cmake-build-debug/music-vis-backend_artefacts` or 
-`cmake-build-release/music-vis-backend_artefacts` folders, depending on your configuration.
+10. Results of the build process will be in the `cmake-build-debug/music-vis-backend_artefacts` or 
+`cmake-build-release/music-vis-backend_artefacts` folders, depending on your configuration
 11. Code away :)
